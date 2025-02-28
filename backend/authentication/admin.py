@@ -1,3 +1,7 @@
 from django.contrib import admin
+from .models import Competitor
 
-# Register your models here.
+class CompetitorAdmin(admin.ModelAdmin):
+    model=Competitor
+
+admin.site.register(Competitor, CompetitorAdmin)
