@@ -5,9 +5,9 @@ import {
   Box,
   TextField,
   Button,
-  Typography,
   Alert,
 } from '@mui/material';
+import Logo from '../components/Logo';
 import authService from '../services/authService';
 
 const Login = () => {
@@ -36,9 +36,7 @@ const Login = () => {
           alignItems: 'center',
         }}
       >
-        <Typography component="h1" variant="h5">
-          Sign in to CompeteHub
-        </Typography>
+        <Logo size="large" />
         
         {error && (
           <Alert severity="error" sx={{ width: '100%', mt: 2 }}>
