@@ -4,10 +4,9 @@ from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 from .serializers import ContestSerializer
-from .models import Contest, Genre
+from .models import Contest, Genre, Participation
 from django.utils import timezone
 from datetime import timedelta
-
 
 class ContestCreateView(APIView):
     """
@@ -190,3 +189,55 @@ class CompletedContestsView(APIView):
         
         # Return the serialized data
         return Response(serializer.data, status=status.HTTP_200_OK)
+    
+class ContestRegistrationView(APIView):
+    """
+    API endpoint for registering a user for a contest
+    
+    Method: POST
+    
+    URL Parameter:
+    - pk: Contest ID
+    
+    Returns:
+    - 201 Created: Successfully registered for the contest
+    - 400 Bad Request: Registration failed (already registered or invalid contest)
+    - 403 Forbidden: Contest registration not allowed (e.g. contest already started)
+    - 404 Not Found: Contest with provided ID doesn't exist
+    """
+    permission_classes = [IsAuthenticated]
+    
+    def post(self, request, pk):
+        # Get the contest or return 404 if not found
+        contest = get_object_or_404(Contest, pk=pk)
+        
+        # Check if the contest has already started
+        now = timezone.now()
+        if contest.starting_time <= now:
+            return Response(
+                {"detail": "Cannot register for a contest that has already started."},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        
+        # Check if user is already registered
+        if Participation.objects.filter(user=request.user, contest=contest).exists():
+            return Response(
+                {"detail": "You are already registered for this contest."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Create the participation record
+        try:
+            Participation.objects.create(
+                user=request.user,
+                contest=contest
+            )
+            return Response(
+                {"detail": f"Successfully registered for contest: {contest.name}"},
+                status=status.HTTP_201_CREATED
+            )
+        except Exception as e:
+            return Response(
+                {"detail": f"Registration failed: {str(e)}"},
+                status=status.HTTP_400_BAD_REQUEST
+            )

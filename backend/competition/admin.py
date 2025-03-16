@@ -1,5 +1,6 @@
+from datetime import timezone
 from django.contrib import admin
-from .models import Contest, Genre
+from .models import Contest, Genre, Participation
 
 # Register Genre model
 @admin.register(Genre)
@@ -41,3 +42,35 @@ class ContestAdmin(admin.ModelAdmin):
         if not change:  # Only set creator when creating, not updating
             obj.creator = request.user
         super().save_model(request, obj, form, change)
+
+# Register Participation model
+@admin.register(Participation)
+class ParticipationAdmin(admin.ModelAdmin):
+    list_display = ['user', 'contest', 'registration_time', 'score', 'rank', 'submissions_count', 'get_contest_status']
+    list_filter = ['registration_time', 'contest']
+    search_fields = ['user__username', 'contest__name']
+    readonly_fields = ['registration_time']
+    
+    def get_contest_status(self, obj):
+        """Return current status of the contest (upcoming, active, completed)"""
+        now = timezone.now()
+        if obj.contest.starting_time > now:
+            return "Upcoming"
+        elif obj.contest.starting_time + obj.contest.duration < now:
+            return "Completed"
+        else:
+            return "Active"
+    get_contest_status.short_description = "Contest Status"
+    
+    def get_queryset(self, request):
+        queryset = super().get_queryset(request)
+        if not request.user.is_superuser:
+            # Regular users can only see participations in contests they created
+            return queryset.filter(contest__creator=request.user)
+        return queryset
+    
+    def formfield_for_foreignkey(self, db_field, request, **kwargs):
+        # Limit contest choices to those created by the current user (unless superuser)
+        if db_field.name == "contest" and not request.user.is_superuser:
+            kwargs["queryset"] = Contest.objects.filter(creator=request.user)
+        return super().formfield_for_foreignkey(db_field, request, **kwargs)
