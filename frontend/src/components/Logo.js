@@ -2,6 +2,14 @@ import React from "react";
 import { Box, Typography } from "@mui/material";
 import { styled } from "@mui/material/styles";
 
+const HubText = styled(Typography)(({ theme }) => ({
+  backgroundColor: "#4CAF50",
+  color: "white",
+  padding: "2px 4px",
+  borderRadius: "4px",
+  fontWeight: "bold",
+}));
+
 const Logo = ({ size = "medium" }) => {
   const getFontSize = () => {
     switch (size) {
@@ -15,31 +23,20 @@ const Logo = ({ size = "medium" }) => {
   };
 
   return (
-    <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
+    <Box sx={{ display: "flex", alignItems: "center", gap: 0 }}>
       <Typography
         component="span"
         sx={{
           ...getFontSize(),
           fontWeight: "bold",
-          color: "#ff9800", // Orange color
-          letterSpacing: "0.5px",
-          textShadow: "1px 1px 2px rgba(0,0,0,0.2)",
+          color: "white",
         }}
       >
         Compete
       </Typography>
-      <Typography
-        component="span"
-        sx={{
-          ...getFontSize(),
-          fontWeight: "bold",
-          color: "#2196f3", // Blue color
-          letterSpacing: "0.5px",
-          textShadow: "1px 1px 2px rgba(0,0,0,0.15)",
-        }}
-      >
+      <HubText component="span" sx={getFontSize()}>
         Hub
-      </Typography>
+      </HubText>
     </Box>
   );
 };
