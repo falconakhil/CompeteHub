@@ -3,8 +3,8 @@ import { Box, Typography } from '@mui/material';
 import { styled } from '@mui/material/styles';
 
 const HubText = styled(Typography)(({ theme }) => ({
-  backgroundColor: '#ff9000',
-  color: 'black',
+  backgroundColor: '#4CAF50',
+  color: 'white',
   padding: '2px 4px',
   borderRadius: '4px',
   fontWeight: 'bold',
