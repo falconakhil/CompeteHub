@@ -1,9 +1,13 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import Login from './pages/Login';
+import Signup from './pages/Signup';
+import Profile from './pages/Profile';
 import Dashboard from './pages/Dashboard';
-import { createTheme, ThemeProvider } from '@mui/material';
+import Navbar from './components/Navbar';
+import { createTheme, ThemeProvider, Box } from '@mui/material';
 import CssBaseline from '@mui/material/CssBaseline';
+import authService from './services/authService';
 
 const theme = createTheme({
   palette: {
@@ -45,20 +49,43 @@ const theme = createTheme({
   },
 });
 
+// Protected Route component
+const ProtectedRoute = ({ children }) => {
+  const user = authService.getCurrentUser();
+  if (!user) {
+    return <Navigate to="/dashboard" replace />;
+  }
+  return children;
+};
+
 function App() {
   return (
     <ThemeProvider theme={theme}>
       <CssBaseline />
       <Router>
-        <Routes>
-          <Route path="/login" element={<Login />} />
-          <Route path="/dashboard" element={<Dashboard />} />
-          <Route path="/" element={<Navigate to="/dashboard" replace />} />
-          {/* These routes will be implemented later */}
-          <Route path="/create-contest" element={<Navigate to="/login" />} />
-          <Route path="/problem-set" element={<Navigate to="/login" />} />
-          <Route path="/profile" element={<Navigate to="/login" />} />
-        </Routes>
+        <Box sx={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
+          <Navbar />
+          {/* Add padding to account for fixed navbar */}
+          <Box sx={{ pt: 8 }}>
+            <Routes>
+              <Route path="/login" element={<Login />} />
+              <Route path="/signup" element={<Signup />} />
+              <Route
+                path="/profile"
+                element={
+                  <ProtectedRoute>
+                    <Profile />
+                  </ProtectedRoute>
+                }
+              />
+              <Route path="/dashboard" element={<Dashboard />} />
+              <Route path="/" element={<Navigate to="/dashboard" replace />} />
+              {/* These routes will be implemented later */}
+              <Route path="/create-contest" element={<Dashboard />} />
+              <Route path="/problem-set" element={<Dashboard />} />
+            </Routes>
+          </Box>
+        </Box>
       </Router>
     </ThemeProvider>
   );

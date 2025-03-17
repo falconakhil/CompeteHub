@@ -38,7 +38,11 @@ const Login = () => {
           </Alert>
         )}
 
-        <Box component="form" onSubmit={handleLogin} sx={{ mt: 1 }}>
+        <Box
+          component="form"
+          onSubmit={handleLogin}
+          sx={{ mt: 1, width: "100%" }}
+        >
           <TextField
             margin="normal"
             required
@@ -63,14 +67,18 @@ const Login = () => {
             value={password}
             onChange={(e) => setPassword(e.target.value)}
           />
-          <Button
-            type="submit"
-            fullWidth
-            variant="contained"
-            sx={{ mt: 3, mb: 2 }}
-          >
-            Sign In
-          </Button>
+          <Stack direction="row" spacing={2} sx={{ mt: 3, mb: 2 }}>
+            <Button type="submit" fullWidth variant="contained">
+              Sign In
+            </Button>
+            <Button
+              fullWidth
+              variant="outlined"
+              onClick={() => navigate("/signup")}
+            >
+              Sign Up
+            </Button>
+          </Stack>
         </Box>
       </Box>
     </Container>
