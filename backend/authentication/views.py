@@ -3,6 +3,7 @@ from rest_framework.response import Response
 from rest_framework.permissions import AllowAny,IsAuthenticated
 from .serializers import CompetitorSerializer
 from django.contrib.auth import authenticate
+from competition.models import Participation
 
 
 class SignUp(APIView):
@@ -23,6 +24,11 @@ class UserProfile(APIView):
         data=serializer.data
         if 'password' in data:
             del data['password']
+        try:
+            contests_count = Participation.objects.filter(user=user).count()
+            data['contests_participated'] = contests_count
+        except:
+            data['contests_participated'] = 0
         return Response(data, status=200)
     
 class DeleteUser(APIView):
