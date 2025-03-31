@@ -1,10 +1,10 @@
 from datetime import timezone
 from django.contrib import admin
-from .models import Contest, Genre, Participation
+from .models import Contest, ContestGenre, Participation
 
 # Register Genre model
-@admin.register(Genre)
-class GenreAdmin(admin.ModelAdmin):
+@admin.register(ContestGenre)
+class ContestGenreAdmin(admin.ModelAdmin):
     list_display = ['name']
     search_fields = ['name']
 

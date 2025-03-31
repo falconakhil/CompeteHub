@@ -4,7 +4,7 @@ from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 from .serializers import ContestSerializer
-from .models import Contest, Genre, Participation
+from .models import Contest, ContestGenre, Participation
 from django.utils import timezone
 from datetime import timedelta
 
@@ -38,7 +38,7 @@ class ContestCreateView(APIView):
             genres = []
             
             for name in genre_names:
-                genre, created = Genre.objects.get_or_create(name=name.lower().strip())
+                genre, created = ContestGenre.objects.get_or_create(name=name.lower().strip())
                 genres.append(genre.id)
                 
             data['genre_ids'] = genres

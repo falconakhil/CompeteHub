@@ -1,17 +1,17 @@
 from rest_framework import serializers
-from .models import Contest, Genre
+from .models import Contest, ContestGenre
 
 
-class GenreSerializer(serializers.ModelSerializer):
+class ContestGenreSerializer(serializers.ModelSerializer):
     class Meta:
-        model = Genre
+        model = ContestGenre
         fields = ['id', 'name']
 
 
 class ContestSerializer(serializers.ModelSerializer):
-    genres = GenreSerializer(many=True, read_only=True)
+    genres = ContestGenreSerializer(many=True, read_only=True)
     genre_ids = serializers.PrimaryKeyRelatedField(
-        queryset=Genre.objects.all(),
+        queryset=ContestGenre.objects.all(),
         many=True,
         source='genres',
         write_only=True
