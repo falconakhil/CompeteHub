@@ -14,6 +14,8 @@ from problem.models import Problem
 from .models import Contest, ContestGenre, Participation,ContestProblem
 
 from django.utils import timezone
+from django.db import models
+from django.db.models import F, ExpressionWrapper, DateTimeField
 from datetime import timedelta
 
 class ContestCreateView(APIView):
@@ -80,124 +82,75 @@ class ContestDeleteView(APIView):
         
         return Response(status=status.HTTP_204_NO_CONTENT)
 
-class FutureContestsView(APIView):
+
+class ContestPagination(PageNumberPagination):
+    """
+    Custom pagination class for contests
+    """
+    page_size = 10
+    page_size_query_param = 'page_size'
+    max_page_size = 100
+
+class FutureContestsView(ListAPIView):
     """
     API endpoint for retrieving future contests created by the authenticated user
-    (contests that have not started yet)
+    (contests that have not started yet),
+    sorted by starting time in decreasing order.
     """
     permission_classes = [IsAuthenticated]
-    
-    def get(self, request):
+    serializer_class = ContestSerializer
+    pagination_class = ContestPagination
+
+    def get_queryset(self):
         now = timezone.now()
         # Get future contests created by the current user
-        future_contests = Contest.objects.filter(
-            creator=request.user,
-            starting_time__gt=now
-        )
-        
-        # Serialize the contest data
-        serializer = ContestSerializer(future_contests, many=True)
-        
-        # Return the serialized data
-        return Response(serializer.data, status=status.HTTP_200_OK)
+        return Contest.objects.filter(
+            creator=self.request.user,
+            starting_time__gt=now  # Contest has not started yet
+        ).order_by('-starting_time')  # Sort by starting time in decreasing order
 
 
-class ActiveContestsView(APIView):
+class ActiveContestsView(ListAPIView):
     """
     API endpoint for retrieving active contests
-    (contests that have started but not ended yet)
+    (contests that have started but not ended yet),
+    sorted by ending time in decreasing order.
     """
     permission_classes = [IsAuthenticated]
-    
-    def get(self, request):
+    serializer_class = ContestSerializer
+    pagination_class = ContestPagination
+
+    def get_queryset(self):
         now = timezone.now()
-        # Get active contests created by the current user
-        active_contests = []
-        
-        # Need to check each contest's end time based on duration
-        for contest in Contest.objects.filter(starting_time__lte=now):
-            end_time = contest.starting_time + contest.duration
-            if end_time >= now:
-                active_contests.append(contest)
-        
-        # Serialize the contest data
-        serializer = ContestSerializer(active_contests, many=True)
-        
-        # Return the serialized data
-        return Response(serializer.data, status=status.HTTP_200_OK)
+        # Annotate contests with their ending time
+        return Contest.objects.annotate(
+            end_time=ExpressionWrapper(F('starting_time') + F('duration'), output_field=DateTimeField())
+        ).filter(
+            creator=self.request.user,
+            starting_time__lte=now,  # Contest has started
+            end_time__gte=now        # Contest has not ended
+        ).order_by('-end_time')  # Sort by ending time in decreasing order
 
 
-class CompletedContestsView(APIView):
+class CompletedContestsView(ListAPIView):
     """
     API endpoint for retrieving completed contests
-    (contests that have ended) within a specified date range.
-    
-    Method: GET
-    
-    Expected Input JSON (optional):
-    {
-        "start_date": "2025-01-01",  // optional, defaults to 30 days ago
-        "end_date": "2025-03-31"     // optional, defaults to today
-    }
-    
-    Returns:
-    - 200 OK: List of completed contests within date range
-    - 400 Bad Request: Invalid date format
+    (contests that have ended), sorted by end time (most recent first).
     """
     permission_classes = [IsAuthenticated]
-    
-    def get(self, request):
+    serializer_class = ContestSerializer
+    pagination_class = ContestPagination
+
+    def get_queryset(self):
         now = timezone.now()
-        
-        # Get date range from JSON body with defaults
-        try:
-            # Default to last 30 days if not specified
-            default_start = (now - timedelta(days=30)).date().isoformat()
-            default_end = now.date().isoformat()
-            
-            data = request.data
-            start_date_str = data.get('start_date', default_start)
-            end_date_str = data.get('end_date', default_end)
-            
-            # Parse the date strings to datetime objects
-            start_date = timezone.datetime.strptime(start_date_str, '%Y-%m-%d')
-            # Set end_date to end of day
-            end_date = timezone.datetime.strptime(end_date_str, '%Y-%m-%d')
-            end_date = end_date.replace(hour=23, minute=59, second=59)
-            
-            # Convert to timezone-aware datetime if needed
-            if timezone.is_naive(start_date):
-                start_date = timezone.make_aware(start_date)
-            if timezone.is_naive(end_date):
-                end_date = timezone.make_aware(end_date)
-                
-        except ValueError:
-            return Response(
-                {"error": "Invalid date format. Please use YYYY-MM-DD."},
-                status=status.HTTP_400_BAD_REQUEST
-            )
-        
-        # Get completed contests created by the current user within date range
-        completed_contests = []
-        
-        # Filter contests that started before now (potentially completed)
-        potential_contests = Contest.objects.filter(
-            # creator=request.user,
-            starting_time__lte=now
-        )
-        
-        # Check each contest's end time and filter by date range
-        for contest in potential_contests:
-            end_time = contest.starting_time + contest.duration
-            if end_time < now and start_date <= end_time <= end_date:
-                completed_contests.append(contest)
-        
-        # Serialize the contest data
-        serializer = ContestSerializer(completed_contests, many=True)
-        
-        # Return the serialized data
-        return Response(serializer.data, status=status.HTTP_200_OK)
-    
+        # Filter contests that have ended (end_time < now)
+        return Contest.objects.annotate(
+            end_time=ExpressionWrapper(F('starting_time') + F('duration'), output_field=DateTimeField())
+        ).filter(
+            creator=self.request.user,
+            end_time__lt=now  # Contest has ended
+        ).order_by('-end_time')  # Sort by end time, most recent first
+
 class ContestRegistrationView(APIView):
     """
     API endpoint for registering a user for a contest
