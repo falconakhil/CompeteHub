@@ -240,7 +240,8 @@ class ContestProblemsView(ListAPIView):
     
 class AddProblemsToContestView(APIView):
     """
-    API endpoint for adding problems to a contest
+    API endpoint for adding problems to a contest.
+    Problems can only be added if the contest has not yet started.
     """
     permission_classes = [IsAuthenticated]
 
@@ -253,6 +254,14 @@ class AddProblemsToContestView(APIView):
             return Response(
                 {"detail": "You do not have permission to add problems to this contest."},
                 status=status.HTTP_403_FORBIDDEN
+            )
+
+        # Check if the contest has already started
+        now = timezone.now()
+        if contest.starting_time <= now:
+            return Response(
+                {"detail": "You cannot add problems to a contest that has already started."},
+                status=status.HTTP_400_BAD_REQUEST
             )
 
         # Get the list of problem IDs from the request data
@@ -282,5 +291,47 @@ class AddProblemsToContestView(APIView):
 
         return Response(
             {"detail": f"Successfully added problems to contest: {contest.name}", "added_problems": added_problems},
+            status=status.HTTP_200_OK
+        )
+    
+class RemoveProblemFromContestView(APIView):
+    """
+    API endpoint for removing a problem from a contest.
+    A problem can only be removed if the contest has not yet started.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def delete(self, request, contest_id, problem_id):
+        # Get the contest or return 404 if not found
+        contest = get_object_or_404(Contest, pk=contest_id)
+
+        # Check if the user is the creator of the contest
+        if contest.creator != request.user:
+            return Response(
+                {"detail": "You do not have permission to modify this contest."},
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+        # Check if the contest has already started
+        now = timezone.now()
+        if contest.starting_time <= now:
+            return Response(
+                {"detail": "You cannot remove problems from a contest that has already started."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # Get the ContestProblem entry or return 404 if not found
+        contest_problem = ContestProblem.objects.filter(contest=contest, problem_id=problem_id).first()
+        if not contest_problem:
+            return Response(
+                {"detail": "The specified problem is not part of this contest."},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        # Delete the ContestProblem entry
+        contest_problem.delete()
+
+        return Response(
+            {"detail": f"Problem with ID {problem_id} has been removed from contest '{contest.name}'."},
             status=status.HTTP_200_OK
         )
