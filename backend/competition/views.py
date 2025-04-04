@@ -1,10 +1,18 @@
 from django.shortcuts import get_object_or_404
+
 from rest_framework.views import APIView
+from rest_framework.generics import ListAPIView
 from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
+from rest_framework.pagination import PageNumberPagination
+
 from .serializers import ContestSerializer
-from .models import Contest, ContestGenre, Participation
+from problem.serializers import ProblemSerializer
+from problem.models import Problem
+
+from .models import Contest, ContestGenre, Participation,ContestProblem
+
 from django.utils import timezone
 from datetime import timedelta
 
@@ -96,7 +104,7 @@ class FutureContestsView(APIView):
 
 class ActiveContestsView(APIView):
     """
-    API endpoint for retrieving active contests created by the authenticated user
+    API endpoint for retrieving active contests
     (contests that have started but not ended yet)
     """
     permission_classes = [IsAuthenticated]
@@ -107,7 +115,7 @@ class ActiveContestsView(APIView):
         active_contests = []
         
         # Need to check each contest's end time based on duration
-        for contest in Contest.objects.filter(creator=request.user, starting_time__lte=now):
+        for contest in Contest.objects.filter(starting_time__lte=now):
             end_time = contest.starting_time + contest.duration
             if end_time >= now:
                 active_contests.append(contest)
@@ -121,7 +129,7 @@ class ActiveContestsView(APIView):
 
 class CompletedContestsView(APIView):
     """
-    API endpoint for retrieving completed contests created by the authenticated user
+    API endpoint for retrieving completed contests
     (contests that have ended) within a specified date range.
     
     Method: GET
@@ -138,7 +146,7 @@ class CompletedContestsView(APIView):
     """
     permission_classes = [IsAuthenticated]
     
-    def post(self, request):
+    def get(self, request):
         now = timezone.now()
         
         # Get date range from JSON body with defaults
@@ -174,7 +182,7 @@ class CompletedContestsView(APIView):
         
         # Filter contests that started before now (potentially completed)
         potential_contests = Contest.objects.filter(
-            creator=request.user,
+            # creator=request.user,
             starting_time__lte=now
         )
         
@@ -241,3 +249,85 @@ class ContestRegistrationView(APIView):
                 {"detail": f"Registration failed: {str(e)}"},
                 status=status.HTTP_400_BAD_REQUEST
             )
+
+class ContestProblemPagination(PageNumberPagination):
+    """
+    Custom pagination class for contest problems
+    """
+    page_size = 10
+    page_size_query_param = 'page_size'
+    max_page_size = 100
+
+class ContestProblemsView(ListAPIView):
+    """
+    API endpoint for retrieving paginated problems of a specific contest
+    """
+    permission_classes = [IsAuthenticated]
+    serializer_class = ProblemSerializer
+    pagination_class = ContestProblemPagination
+
+    def get_queryset(self):
+        # Get the contest ID from the URL
+        contest_id = self.kwargs.get('pk')
+        # Filter problems for the given contest
+        return ContestProblem.objects.filter(contest_id=contest_id).order_by('order').values_list('problem', flat=True)
+
+    def list(self, request, *args, **kwargs):
+        # Get the queryset of problem IDs
+        problem_ids = self.get_queryset()
+        # Fetch the actual Problem objects
+        queryset = Problem.objects.filter(id__in=problem_ids)
+        # Paginate the queryset
+        page = self.paginate_queryset(queryset)
+        if page is not None:
+            serializer = self.get_serializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
+        serializer = self.get_serializer(queryset, many=True)
+        return Response(serializer.data)
+    
+class AddProblemsToContestView(APIView):
+    """
+    API endpoint for adding problems to a contest
+    """
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, pk):
+        # Get the contest or return 404 if not found
+        contest = get_object_or_404(Contest, pk=pk)
+
+        # Check if the user is the creator of the contest
+        if contest.creator != request.user:
+            return Response(
+                {"detail": "You do not have permission to add problems to this contest."},
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+        # Get the list of problem IDs from the request data
+        problem_ids = request.data.get('problem_ids', [])
+        if not isinstance(problem_ids, list) or not problem_ids:
+            return Response(
+                {"detail": "A list of problem IDs is required."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # Add problems to the contest
+        added_problems = []
+        for problem_id in problem_ids:
+            problem = Problem.objects.filter(id=problem_id).first()
+            if not problem:
+                return Response(
+                    {"detail": f"Problem with ID {problem_id} does not exist."},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            # Create or update the ContestProblem entry
+            contest_problem, created = ContestProblem.objects.get_or_create(
+                contest=contest,
+                problem=problem,
+                defaults={'points': 100, 'order': ContestProblem.objects.filter(contest=contest).count() + 1}
+            )
+            added_problems.append(problem.id)
+
+        return Response(
+            {"detail": f"Successfully added problems to contest: {contest.name}", "added_problems": added_problems},
+            status=status.HTTP_200_OK
+        )

@@ -1,5 +1,6 @@
 from django.db import models
 from django.conf import settings
+from problem.models import Problem
 
 
 class ContestGenre(models.Model):
@@ -17,9 +18,27 @@ class Contest(models.Model):
     description = models.TextField()
     creator = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='created_contests')
     participants = models.ManyToManyField(settings.AUTH_USER_MODEL, through='Participation', related_name='participated_contests')
+    problems = models.ManyToManyField(Problem, through='ContestProblem', related_name='contests')
     
     def __str__(self):
         return self.name
+
+
+class ContestProblem(models.Model):
+    """
+    Represents a problem included in a contest with associated points
+    """
+    contest = models.ForeignKey(Contest, on_delete=models.CASCADE)
+    problem = models.ForeignKey(Problem, on_delete=models.CASCADE)
+    points = models.PositiveIntegerField(default=100, help_text="Points awarded for solving this problem")
+    order = models.PositiveIntegerField(default=0, help_text="Order of the problem in the contest")
+    
+    class Meta:
+        unique_together = ['contest', 'problem']
+        ordering = ['order']
+    
+    def __str__(self):
+        return f"{self.problem.title} in {self.contest.name} ({self.points} points)"
 
 
 class Participation(models.Model):
