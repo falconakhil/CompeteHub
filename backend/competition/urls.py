@@ -1,5 +1,5 @@
 from django.urls import path,include
-from .views import ActiveContestsView, CompletedContestsView, ContestCreateView, ContestDeleteView, ContestRegistrationView, FutureContestsView, ContestProblemsView,AddProblemsToContestView,RemoveProblemsFromContestView
+from .views import ActiveContestsView, CompletedContestsView, ContestCreateView, ContestDeleteView, ContestRegistrationView, FutureContestsView, ContestProblemsView, AddProblemsToContestView, RemoveProblemFromContestView
 
 urlpatterns = [
     path('create/', ContestCreateView.as_view(), name='create-competition'),
@@ -11,7 +11,7 @@ urlpatterns = [
 
     path('problems/list/<int:pk>/',ContestProblemsView.as_view(), name='contest-problems'),
     path('problems/add/<int:pk>/',AddProblemsToContestView.as_view(), name='add-problems'),
-    path('problems/remove/<int:contest_id>/<int:problem_id>/',RemoveProblemsFromContestView.as_view(), name='remove-problems'),
+    path('problems/remove/<int:contest_id>/<int:problem_id>/',RemoveProblemFromContestView.as_view(), name='remove-problems'),
 
     path('register/<int:pk>/', ContestRegistrationView.as_view(), name='register-contest'),
 ]

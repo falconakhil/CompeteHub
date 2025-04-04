@@ -8,6 +8,8 @@ import Navbar from './components/Navbar';
 import { createTheme, ThemeProvider, Box } from '@mui/material';
 import CssBaseline from '@mui/material/CssBaseline';
 import authService from './services/authService';
+import CreateContest from './pages/CreateContest';
+import CreateProblem from './pages/CreateProblem';
 
 const theme = createTheme({
   palette: {
@@ -81,8 +83,11 @@ function App() {
               <Route path="/dashboard" element={<Dashboard />} />
               <Route path="/" element={<Navigate to="/dashboard" replace />} />
               {/* These routes will be implemented later */}
-              <Route path="/create-contest" element={<Dashboard />} />
+              <Route path="/create-contest" element={<CreateContest />} />
+              <Route path="/create-problem" element={<CreateProblem />} />
               <Route path="/problem-set" element={<Dashboard />} />
+              <Route path="/contests" element={<Dashboard />} />
+              <Route path="/contests/:id" element={<Dashboard />} />
             </Routes>
           </Box>
         </Box>
