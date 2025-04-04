@@ -14,9 +14,7 @@ from problem.models import Problem
 from .models import Contest, ContestGenre, Participation,ContestProblem
 
 from django.utils import timezone
-from django.db import models
 from django.db.models import F, ExpressionWrapper, DateTimeField
-from datetime import timedelta
 
 class ContestCreateView(APIView):
     """
@@ -29,7 +27,7 @@ class ContestCreateView(APIView):
         "name": "Spring Coding Challenge 2025",
         "description": "A competitive programming contest featuring algorithmic problems across multiple difficulty levels.",
         "starting_time": "2025-04-15T09:00:00Z",
-        "duration": 360,
+        "duration": "1 06:00:00",  # Duration in DD HH:MM:SS format
         "genre_names": ["Algorithms", "Data Structures", "Mathematics"]
     }
     
@@ -42,6 +40,22 @@ class ContestCreateView(APIView):
     def post(self, request):
         data = request.data.copy()
         
+        # Validate that the starting_time is in the future
+        starting_time = data.get('starting_time')
+        if starting_time:
+            try:
+                starting_time = timezone.datetime.fromisoformat(starting_time)
+                if starting_time <= timezone.now():
+                    return Response(
+                        {"detail": "The starting time must be in the future."},
+                        status=status.HTTP_400_BAD_REQUEST
+                    )
+            except ValueError:
+                return Response(
+                    {"detail": "Invalid starting_time format. Use ISO 8601 format."},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            
         # Handle genre names
         if 'genre_names' in data:
             genre_names = data.pop('genre_names')
@@ -62,7 +76,8 @@ class ContestCreateView(APIView):
     
 class ContestDeleteView(APIView):
     """
-    API endpoint for deleting a contest
+    API endpoint for deleting a contest.
+    Only future contests (not yet started) can be deleted.
     """
     permission_classes = [IsAuthenticated]
     
@@ -75,6 +90,14 @@ class ContestDeleteView(APIView):
             return Response(
                 {"detail": "You do not have permission to delete this contest."},
                 status=status.HTTP_403_FORBIDDEN
+            )
+        
+        # Check if the contest has already started
+        now = timezone.now()
+        if contest.starting_time <= now:
+            return Response(
+                {"detail": "You can only delete contests that have not yet started."},
+                status=status.HTTP_400_BAD_REQUEST
             )
         
         # Delete the contest
