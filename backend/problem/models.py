@@ -24,3 +24,19 @@ class Problem(models.Model):
     class Meta:
         ordering = ['-created_at']
 
+class Submission(models.Model):
+    STATUS_CHOICES = [
+        ('Correct', 'Correct'),
+        ('Wrong', 'Wrong'),
+        ('Unknown', 'Unknown'),
+    ]
+
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="submissions")
+    problem = models.ForeignKey(Problem, on_delete=models.CASCADE, related_name="submissions")
+    content = models.TextField(help_text="The submitted solution/content")
+    evaluation_status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='Unknown')
+    remarks = models.TextField(blank=True, null=True, help_text="Additional remarks about the submission")  # New field added
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"Submission by {self.user.username} for {self.problem.title} - {self.evaluation_status}"

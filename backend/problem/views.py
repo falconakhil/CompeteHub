@@ -3,8 +3,8 @@ from rest_framework.generics import ListAPIView
 from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
-from .models import Problem, ProblemGenre
-from .serializers import ProblemSerializer
+from .models import Problem, ProblemGenre, Submission
+from .serializers import ProblemSerializer, SubmissionSerializer
 from rest_framework.pagination import PageNumberPagination
 
 
@@ -55,5 +55,31 @@ class ProblemListView(ListAPIView):
             serializer = self.get_serializer(page, many=True)
             return self.get_paginated_response(serializer.data)
         
+        serializer = self.get_serializer(queryset, many=True)
+        return Response(serializer.data)
+
+class SubmissionCreateView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, problem_id):
+        data = request.data.copy()
+        data['user'] = request.user.id
+        data['problem'] = problem_id
+        
+        serializer = SubmissionSerializer(data=data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+class SubmissionListView(ListAPIView):
+    """
+    API endpoint for listing all submissions for a specific problem
+    """
+    permission_classes = [IsAuthenticated]
+    serializer_class = SubmissionSerializer
+
+    def get(self, request, problem_id):
+        queryset = Submission.objects.filter(problem_id=problem_id)
         serializer = self.get_serializer(queryset, many=True)
         return Response(serializer.data)

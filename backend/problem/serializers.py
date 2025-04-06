@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Problem, ProblemGenre
+from .models import Problem, ProblemGenre, Submission
 
 
 class ProblemGenreSerializer(serializers.ModelSerializer):
@@ -43,3 +43,10 @@ class ProblemSerializer(serializers.ModelSerializer):
             
         instance.save()
         return instance
+    
+    
+class SubmissionSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Submission
+        fields = ['id', 'user', 'problem', 'content', 'evaluation_status', 'remarks', 'created_at']
+        read_only_fields = ['id', 'user', 'created_at']
