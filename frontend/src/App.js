@@ -10,6 +10,8 @@ import CssBaseline from '@mui/material/CssBaseline';
 import authService from './services/authService';
 import CreateContest from './pages/CreateContest';
 import CreateProblem from './pages/CreateProblem';
+import ContestListView from './views/ContestListView';
+import ContestDetailsView from './views/ContestDetailsView';
 
 const theme = createTheme({
   palette: {
@@ -86,8 +88,8 @@ function App() {
               <Route path="/create-contest" element={<CreateContest />} />
               <Route path="/create-problem" element={<CreateProblem />} />
               <Route path="/problem-set" element={<Dashboard />} />
-              <Route path="/contests" element={<Dashboard />} />
-              <Route path="/contests/:id" element={<Dashboard />} />
+              <Route path="/contests" element={<ContestListView />} />
+              <Route path="/contests/:contestId" element={<ContestDetailsView />} />
             </Routes>
           </Box>
         </Box>

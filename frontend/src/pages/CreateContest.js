@@ -390,7 +390,7 @@ const CreateContest = () => {
       alert('Please add at least one problem to the contest.');
       return;
     }
-    navigate('/dashboard');
+    navigate('/dashboard', { state: { refresh: true } });
   };
 
   const renderStepContent = (step) => {
@@ -536,12 +536,6 @@ const CreateContest = () => {
           <LoginForm onLoginSuccess={handleLoginSuccess} />
         ) : (
           <>
-            <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 2 }}>
-              <Button variant="outlined" size="small" color="error" onClick={handleLogout}>
-                Logout
-              </Button>
-            </Box>
-            
             <Stepper activeStep={activeStep} sx={{ mb: 4 }}>
               {steps.map((label) => (
                 <Step key={label}>
