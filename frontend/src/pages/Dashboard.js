@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import {
   Box,
   Button,
@@ -10,49 +10,40 @@ import {
   Card,
   CardContent,
   CardActions,
+  CircularProgress,
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import ListAltIcon from '@mui/icons-material/ListAlt';
 import Logo from '../components/Logo';
 import authService from '../services/authService';
+import contestService from '../services/contestService';
 
 const Dashboard = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const [upcomingContests, setUpcomingContests] = useState([]);
+  const [activeContests, setActiveContests] = useState([]);
+  const [loading, setLoading] = useState(true);
   const isAuthenticated = !!authService.getCurrentUser();
 
   useEffect(() => {
-    fetchUpcomingContests();
-  }, []);
+    fetchContests();
+  }, [location.state?.refresh]);
 
-  const fetchUpcomingContests = async () => {
+  const fetchContests = async () => {
     try {
-      // Get the auth token
-      const token = localStorage.getItem('access_token');
-      const headers = {
-        'Content-Type': 'application/json',
-      };
+      setLoading(true);
+      // Fetch upcoming contests
+      const upcomingData = await contestService.getContests('future');
+      setUpcomingContests(upcomingData.results || upcomingData);
       
-      if (token) {
-        headers['Authorization'] = `Bearer ${token}`;
-      }
-      
-      const response = await fetch('http://localhost:8000/contest/list/future/', {
-        method: 'GET',
-        headers: headers,
-      });
-      
-      if (!response.ok) {
-        throw new Error(`HTTP error! Status: ${response.status}`);
-      }
-      
-      const data = await response.json();
-      console.log('Fetched contests:', data);
-      // Check if response has results property (paginated response)
-      const contests = data.results || data;
-      setUpcomingContests(contests);
+      // Fetch active contests
+      const activeData = await contestService.getContests('active');
+      setActiveContests(activeData.results || activeData);
     } catch (error) {
-      console.error('Error fetching upcoming contests:', error);
+      console.error('Error fetching contests:', error);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -66,6 +57,58 @@ const Dashboard = () => {
     } else {
       navigate(path);
     }
+  };
+
+  const renderContestCards = (contests, emptyMessage) => {
+    if (loading) {
+      return (
+        <Grid item xs={12} sx={{ display: 'flex', justifyContent: 'center', p: 3 }}>
+          <CircularProgress />
+        </Grid>
+      );
+    }
+
+    if (contests.length === 0) {
+      return (
+        <Grid item xs={12}>
+          <Paper elevation={1} sx={{ p: 3, textAlign: 'center' }}>
+            <Typography color="textSecondary">
+              {emptyMessage}
+            </Typography>
+          </Paper>
+        </Grid>
+      );
+    }
+
+    return contests.map((contest) => (
+      <Grid item xs={12} md={6} lg={4} key={contest.id}>
+        <Card>
+          <CardContent>
+            <Typography variant="h6" component="h3" gutterBottom>
+              {contest.title || contest.name}
+            </Typography>
+            <Typography color="textSecondary" gutterBottom>
+              Start: {formatDate(contest.start_time || contest.starting_time)}
+            </Typography>
+            <Typography color="textSecondary">
+              Duration: {contest.duration} minutes
+            </Typography>
+            <Typography variant="body2" sx={{ mt: 1 }}>
+              Problems: {Array.isArray(contest.problems) ? contest.problems.length : '?'}
+            </Typography>
+          </CardContent>
+          <CardActions>
+            <Button
+              size="small"
+              color="primary"
+              onClick={() => navigate(`/contests/${contest.id}`)}
+            >
+              View Details
+            </Button>
+          </CardActions>
+        </Card>
+      </Grid>
+    ));
   };
 
   return (
@@ -98,50 +141,23 @@ const Dashboard = () => {
             </Paper>
           </Grid>
 
+          {/* Active Contests */}
+          <Grid item xs={12}>
+            <Typography variant="h5" component="h2" gutterBottom sx={{ mt: 3 }}>
+              Active Contests
+            </Typography>
+            <Grid container spacing={3}>
+              {renderContestCards(activeContests, 'No active contests at the moment')}
+            </Grid>
+          </Grid>
+
           {/* Upcoming Contests */}
           <Grid item xs={12}>
             <Typography variant="h5" component="h2" gutterBottom sx={{ mt: 3 }}>
               Upcoming Contests
             </Typography>
             <Grid container spacing={3}>
-              {upcomingContests.map((contest) => (
-                <Grid item xs={12} md={6} lg={4} key={contest.id}>
-                  <Card>
-                    <CardContent>
-                      <Typography variant="h6" component="h3" gutterBottom>
-                        {contest.name}
-                      </Typography>
-                      <Typography color="textSecondary" gutterBottom>
-                        Start: {formatDate(contest.starting_time)}
-                      </Typography>
-                      <Typography color="textSecondary">
-                        Duration: {contest.duration} minutes
-                      </Typography>
-                      <Typography variant="body2" sx={{ mt: 1 }}>
-                        Problems: {Array.isArray(contest.problems) ? contest.problems.length : '?'}
-                      </Typography>
-                    </CardContent>
-                    <CardActions>
-                      <Button
-                        size="small"
-                        color="primary"
-                        onClick={() => navigate(`/contests/${contest.id}`)}
-                      >
-                        View Details
-                      </Button>
-                    </CardActions>
-                  </Card>
-                </Grid>
-              ))}
-              {upcomingContests.length === 0 && (
-                <Grid item xs={12}>
-                  <Paper elevation={1} sx={{ p: 3, textAlign: 'center' }}>
-                    <Typography color="textSecondary">
-                      No upcoming contests at the moment
-                    </Typography>
-                  </Paper>
-                </Grid>
-              )}
+              {renderContestCards(upcomingContests, 'No upcoming contests at the moment')}
             </Grid>
           </Grid>
         </Grid>
