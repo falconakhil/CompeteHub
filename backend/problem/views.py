@@ -62,13 +62,17 @@ class SubmissionCreateView(APIView):
     permission_classes = [IsAuthenticated]
 
     def post(self, request, problem_id):
+        try:
+            problem = Problem.objects.get(id=problem_id)
+        except Problem.DoesNotExist:
+            return Response({"error": "Problem not found"}, status=status.HTTP_404_NOT_FOUND)
+
         data = request.data.copy()
-        data['user'] = request.user.id
         data['problem'] = problem_id
-        
+
         serializer = SubmissionSerializer(data=data)
         if serializer.is_valid():
-            serializer.save()
+            serializer.save(user=request.user)
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
