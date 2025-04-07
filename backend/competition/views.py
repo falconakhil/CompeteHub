@@ -319,8 +319,30 @@ class AddProblemsToContestView(APIView):
     
 class RemoveProblemFromContestView(APIView):
     """
-    API endpoint for removing a problem from a contest.
-    A problem can only be removed if the contest has not yet started.
+    API endpoint for adding problems to a contest.
+
+    Permissions:
+    - Only authenticated users can access this endpoint.
+    - Only the creator of the contest can add problems to it.
+
+    Conditions:
+    - Problems can only be added if the contest has not yet started.
+    - The request must include a list of valid problem IDs.
+
+    URL Parameters:
+    - pk (int): The ID of the contest.
+
+    Request Body:
+    - problem_ids (list of int): A list of problem IDs to be added to the contest.
+
+    Example Usage:
+    - Add problems with IDs 1, 2, and 3 to a contest with ID 10:
+        Endpoint: /api/contests/10/add_problems/
+        Method: POST
+        Request Body:
+        {
+            "problem_ids": [1, 2, 3]
+        }
     """
     permission_classes = [IsAuthenticated]
 

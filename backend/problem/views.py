@@ -9,6 +9,28 @@ from rest_framework.pagination import PageNumberPagination
 
 
 class ProblemCreateView(APIView):
+    """
+    API endpoint for creating a new problem.
+
+    Permissions:
+    - Only authenticated users can access this endpoint.
+
+    Request Body:
+    - title (str): Title of the problem (required).
+    - description (str): Description of the problem (required).
+    - genre_names (list of str): List of genres associated with the problem (optional).
+
+    Example JSON Request:
+    {
+        "title": "Sample Problem",
+        "description": "This is a sample problem description.",
+        "genre_names": ["Math", "Algorithms"]
+    }
+
+    Response:
+    - 201 Created: Returns the created problem data.
+    - 400 Bad Request: Returns validation errors if the request is invalid.
+    """
     permission_classes = [IsAuthenticated]
 
     def post(self, request):
@@ -35,14 +57,28 @@ class ProblemPagination(PageNumberPagination):
     
 class ProblemListView(ListAPIView):
     """
-    API endpoint for listing all problems
+    API endpoint for listing all problems.
+
+    Permissions:
+    - Only authenticated users can access this endpoint.
+
+    Query Parameters:
+    - genre (list of str): Filter problems by genre names (optional).
+
+    Example JSON Request:
+    {
+        "genre": ["Math", "Algorithms"]
+    }
+
+    Response:
+    - Paginated list of problems with their details.
     """
     permission_classes = [IsAuthenticated]
     pagination_class = ProblemPagination
     serializer_class = ProblemSerializer
 
     def get(self, request):
-        data=request.data.copy()
+        data = request.data.copy()
         genres = data.pop('genre', None)
 
         queryset = Problem.objects.all()
@@ -59,6 +95,17 @@ class ProblemListView(ListAPIView):
         return Response(serializer.data)
 
 class SubmissionCreateView(APIView):
+    """
+    API endpoint for creating a new submission for a specific problem.
+
+    Permissions:
+    - Only authenticated users can access this endpoint.
+
+    Example JSON Request:
+    {
+        "content":"Answer"
+    }
+    """
     permission_classes = [IsAuthenticated]
 
     def post(self, request, problem_id):
@@ -78,7 +125,16 @@ class SubmissionCreateView(APIView):
 
 class SubmissionListView(ListAPIView):
     """
-    API endpoint for listing all submissions for a specific problem
+    API endpoint for listing all submissions for a specific problem.
+
+    Permissions:
+    - Only authenticated users can access this endpoint.
+
+    Response:
+    - List of all submissions for the given problem ID.
+
+    Example JSON Request:
+    No request body is required. The problem ID is passed as a URL parameter.
     """
     permission_classes = [IsAuthenticated]
     serializer_class = SubmissionSerializer
