@@ -1,4 +1,5 @@
 from rest_framework import serializers
+from datetime import timedelta
 from .models import Contest, ContestGenre
 
 
@@ -18,6 +19,7 @@ class ContestSerializer(serializers.ModelSerializer):
     )
     
     creator_username = serializers.ReadOnlyField(source='creator.user.username')
+    duration = serializers.IntegerField(help_text="Duration in minutes")
     
     class Meta:
         model = Contest

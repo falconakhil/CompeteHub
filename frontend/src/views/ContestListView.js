@@ -15,6 +15,7 @@ import {
   Chip,
   CircularProgress,
   Paper,
+  Alert,
 } from '@mui/material';
 import contestService from '../services/contestService';
 
@@ -25,6 +26,7 @@ const ContestListView = () => {
   const [totalPages, setTotalPages] = useState(1);
   const [contestType, setContestType] = useState('active');
   const [loading, setLoading] = useState(true);
+  const [registrationError, setRegistrationError] = useState(null);
 
   const fetchContests = async () => {
     try {
@@ -58,10 +60,13 @@ const ContestListView = () => {
 
   const handleRegister = async (contestId) => {
     try {
+      setRegistrationError(null);
       await contestService.registerForContest(contestId);
-      fetchContests(); // Refresh the list
+      // Refresh the contests list after registration
+      await fetchContests();
     } catch (error) {
       console.error('Error registering for contest:', error);
+      setRegistrationError(error.detail || 'Failed to register for the contest');
     }
   };
 
@@ -95,22 +100,34 @@ const ContestListView = () => {
 
   return (
     <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
-      <Typography variant="h4" component="h1" gutterBottom>
-        Contests
-      </Typography>
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+        <Typography variant="h4" component="h1">
+          Contests
+        </Typography>
+        <Button
+          variant="outlined"
+          onClick={() => navigate('/dashboard')}
+        >
+          Back to Dashboard
+        </Button>
+      </Box>
 
-      <Tabs
-        value={contestType}
-        onChange={handleContestTypeChange}
-        sx={{ mb: 3 }}
-      >
-        <Tab label="Active" value="active" />
-        <Tab label="Future" value="future" />
-        <Tab label="Completed" value="completed" />
-      </Tabs>
+      <Box sx={{ mb: 4 }}>
+        <Tabs value={contestType} onChange={handleContestTypeChange}>
+          <Tab value="active" label="Active Contests" />
+          <Tab value="future" label="Upcoming Contests" />
+          <Tab value="completed" label="Past Contests" />
+        </Tabs>
+      </Box>
+
+      {registrationError && (
+        <Alert severity="error" sx={{ mb: 2 }}>
+          {registrationError}
+        </Alert>
+      )}
 
       {loading ? (
-        <Box sx={{ display: 'flex', justifyContent: 'center', my: 4 }}>
+        <Box sx={{ display: 'flex', justifyContent: 'center' }}>
           <CircularProgress />
         </Box>
       ) : (
@@ -120,20 +137,24 @@ const ContestListView = () => {
               <Grid item xs={12} md={6} key={contest.id}>
                 <Card>
                   <CardContent>
-                    <Typography variant="h6" component="h2">
-                      {contest.title}
+                    <Typography variant="h6" component="div">
+                      {contest.name}
                     </Typography>
-                    <Typography color="textSecondary" gutterBottom>
-                      {new Date(contest.start_time).toLocaleString()}
+                    <Typography color="text.secondary" gutterBottom>
+                      Starts: {new Date(contest.starting_time).toLocaleString()}
                     </Typography>
-                    <Typography variant="body2" paragraph>
-                      Duration: {formatDuration(contest.duration)}
+                    <Typography variant="body2">
+                      {contest.description}
                     </Typography>
-                    <Box sx={{ display: 'flex', gap: 1, mb: 2 }}>
-                      <Chip 
-                        label={contestType} 
-                        color={getContestTypeColor(contestType)} 
-                      />
+                    <Box sx={{ mt: 1 }}>
+                      {contest.genres.map((genre) => (
+                        <Chip
+                          key={genre.id}
+                          label={genre.name}
+                          size="small"
+                          sx={{ mr: 0.5, mb: 0.5 }}
+                        />
+                      ))}
                     </Box>
                   </CardContent>
                   <CardActions>
@@ -144,23 +165,21 @@ const ContestListView = () => {
                     >
                       View Details
                     </Button>
-                    {contestType === 'future' && (
-                      <>
-                        <Button 
-                          size="small" 
-                          color="primary"
-                          onClick={() => handleRegister(contest.id)}
-                        >
-                          Register
-                        </Button>
-                        <Button 
-                          size="small" 
-                          color="error"
-                          onClick={() => handleDelete(contest.id)}
-                        >
-                          Delete
-                        </Button>
-                      </>
+                    {contestType === 'future' && !contest.is_registered && (
+                      <Button 
+                        size="small" 
+                        color="primary"
+                        onClick={() => handleRegister(contest.id)}
+                      >
+                        Register
+                      </Button>
+                    )}
+                    {contest.is_registered && (
+                      <Chip 
+                        label="Registered" 
+                        color="success" 
+                        size="small" 
+                      />
                     )}
                   </CardActions>
                 </Card>

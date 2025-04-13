@@ -13,7 +13,7 @@ class ContestGenre(models.Model):
 class Contest(models.Model):
     name = models.CharField(max_length=100)
     starting_time = models.DateTimeField()
-    duration = models.DurationField()
+    duration = models.IntegerField(help_text="Duration in minutes")
     genres = models.ManyToManyField(ContestGenre, related_name='contests')
     description = models.TextField()
     creator = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='created_contests')

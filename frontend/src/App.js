@@ -12,6 +12,9 @@ import CreateContest from './pages/CreateContest';
 import CreateProblem from './pages/CreateProblem';
 import ContestListView from './views/ContestListView';
 import ContestDetailsView from './views/ContestDetailsView';
+import ContestProblemView from './views/ContestProblemView';
+import ContestProblemsView from './views/ContestProblemsView';
+import ProblemSetView from './views/ProblemSetView';
 
 const theme = createTheme({
   palette: {
@@ -87,9 +90,11 @@ function App() {
               {/* These routes will be implemented later */}
               <Route path="/create-contest" element={<CreateContest />} />
               <Route path="/create-problem" element={<CreateProblem />} />
-              <Route path="/problem-set" element={<Dashboard />} />
+              <Route path="/problem-set" element={<ProblemSetView />} />
               <Route path="/contests" element={<ContestListView />} />
               <Route path="/contests/:contestId" element={<ContestDetailsView />} />
+              <Route path="/contests/:contestId/problems" element={<ContestProblemsView />} />
+              <Route path="/contests/:contestId/problems/:problemOrder" element={<ContestProblemView />} />
             </Routes>
           </Box>
         </Box>

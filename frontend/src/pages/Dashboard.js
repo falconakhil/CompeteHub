@@ -84,14 +84,14 @@ const Dashboard = () => {
       <Grid item xs={12} md={6} lg={4} key={contest.id}>
         <Card>
           <CardContent>
-            <Typography variant="h6" component="h3" gutterBottom>
-              {contest.title || contest.name}
+            <Typography variant="h6" component="h2">
+              {contest.name}
             </Typography>
             <Typography color="textSecondary" gutterBottom>
-              Start: {formatDate(contest.start_time || contest.starting_time)}
+              Start: {formatDate(contest.starting_time)}
             </Typography>
-            <Typography color="textSecondary">
-              Duration: {contest.duration} minutes
+            <Typography variant="body2" paragraph>
+              Duration: {formatDuration(contest.duration)}
             </Typography>
             <Typography variant="body2" sx={{ mt: 1 }}>
               Problems: {Array.isArray(contest.problems) ? contest.problems.length : '?'}
@@ -105,10 +105,25 @@ const Dashboard = () => {
             >
               View Details
             </Button>
+            {contest.is_registered && (
+              <Button
+                size="small"
+                color="secondary"
+                onClick={() => navigate(`/contests/${contest.id}/problems`)}
+              >
+                Enter Contest
+              </Button>
+            )}
           </CardActions>
         </Card>
       </Grid>
     ));
+  };
+
+  const formatDuration = (duration) => {
+    const hours = Math.floor(duration / 3600);
+    const minutes = Math.floor((duration % 3600) / 60);
+    return `${hours}h ${minutes}m`;
   };
 
   return (
@@ -136,6 +151,15 @@ const Dashboard = () => {
                   size="large"
                 >
                   Problem Set
+                </Button>
+                <Button
+                  variant="contained"
+                  color="info"
+                  startIcon={<ListAltIcon />}
+                  onClick={() => handleButtonClick('/contests')}
+                  size="large"
+                >
+                  All Contests
                 </Button>
               </Box>
             </Paper>

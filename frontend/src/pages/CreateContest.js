@@ -20,7 +20,6 @@ import {
   IconButton,
   Alert,
   CircularProgress,
-  Divider,
 } from '@mui/material';
 import { DateTimePicker } from '@mui/x-date-pickers/DateTimePicker';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
@@ -28,6 +27,7 @@ import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import AddIcon from '@mui/icons-material/Add';
 import DeleteIcon from '@mui/icons-material/Delete';
 import authService from '../services/authService';
+import contestService, { createContest } from '../services/contestService';
 
 const steps = ['Contest Details', 'Add Problems'];
 
@@ -93,6 +93,12 @@ const LoginForm = ({ onLoginSuccess }) => {
   );
 };
 
+// Add Debug utility function for tracking values throughout the code
+const debugValue = (label, value) => {
+  console.log(`DEBUG ${label}:`, value, 'Type:', typeof value, 'Is Integer:', Number.isInteger(value));
+  return value;
+};
+
 const CreateContest = () => {
   const navigate = useNavigate();
   const location = useLocation();
@@ -101,8 +107,7 @@ const CreateContest = () => {
   const [contestDetails, setContestDetails] = useState({
     name: '',
     description: '',
-    starting_time: new Date(),
-    duration: 60,
+    starting_time: new Date(Date.now() + 24 * 60 * 60 * 1000), // Default to tomorrow
     genre_names: []
   });
   const [selectedProblems, setSelectedProblems] = useState([]);
@@ -111,6 +116,9 @@ const CreateContest = () => {
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+
+  // Add a separate state for duration to ensure explicit control
+  const [durationMinutes, setDurationMinutes] = useState('');
 
   // Add useEffect to log when contestId changes
   useEffect(() => {
@@ -143,19 +151,58 @@ const CreateContest = () => {
             await authService.refreshToken();
             setIsAuthenticated(true);
           } catch (refreshError) {
+            console.error('Token refresh failed:', refreshError);
             setIsAuthenticated(false);
+            localStorage.removeItem('access_token'); // Clear invalid token
+            localStorage.removeItem('refresh_token'); // Clear refresh token
           }
         } else {
           setIsAuthenticated(false);
         }
       }
     } catch (error) {
+      console.error('Authentication check error:', error);
       setIsAuthenticated(false);
     }
   };
 
   useEffect(() => {
     checkAuthentication();
+    
+    // Validate token when component loads
+    const validateTokenOnLoad = async () => {
+      try {
+        const token = localStorage.getItem('access_token');
+        if (!token) {
+          return;
+        }
+        
+        // Try a test request with the token
+        try {
+          await axios.get('http://localhost:8000/auth/profile/', {
+            headers: { 'Authorization': `Bearer ${token}` }
+          });
+        } catch (error) {
+          if (error.response && error.response.status === 401) {
+            console.log('Token invalid on load, attempting refresh...');
+            try {
+              await authService.refreshToken();
+              console.log('Token refreshed successfully on component load');
+            } catch (refreshError) {
+              console.error('Failed to refresh token on component load:', refreshError);
+              // Clear invalid tokens
+              localStorage.removeItem('access_token');
+              localStorage.removeItem('refresh_token');
+              setIsAuthenticated(false);
+            }
+          }
+        }
+      } catch (error) {
+        console.error('Error validating token on load:', error);
+      }
+    };
+    
+    validateTokenOnLoad();
     
     if (location.state) {
       // Handle refreshing problems
@@ -187,95 +234,126 @@ const CreateContest = () => {
 
   const fetchProblems = async () => {
     try {
-      const token = localStorage.getItem('access_token');
-      
-      console.log('Fetching problems...');
-      
       const response = await axios.get('http://localhost:8000/problem/list/', {
         headers: {
-          'Authorization': `Bearer ${token}`
+          'Authorization': `Bearer ${localStorage.getItem('access_token')}`
         }
       });
-      
-      console.log('Problems fetched:', response.data);
-      console.log('Number of problems:', response.data.results ? response.data.results.length : 0);
-      
-      setAvailableProblems(response.data.results || []);
+      setAvailableProblems(response.data.results || response.data);
     } catch (error) {
       console.error('Error fetching problems:', error);
-      if (error.response) {
-        console.error('Response data:', error.response.data);
-        console.error('Response status:', error.response.status);
-      }
+      setErrorMessage('Failed to fetch available problems');
     }
   };
 
   const handleSaveContestDetails = async () => {
-    setLoading(true);
-    setErrorMessage('');
     try {
-      // Try to refresh token first
-      try {
-        await authService.refreshToken();
-        // Remove token refresh log
-      } catch (refreshError) {
-        console.warn("Could not refresh token");
+      setLoading(true);
+      setErrorMessage('');
+      debugValue('Starting contest creation with duration', durationMinutes);
+      
+      // Validate required fields
+      if (!contestDetails.name || !contestDetails.description || !contestDetails.starting_time) {
+        setErrorMessage('Please fill in all required fields');
+        setLoading(false);
+        return;
       }
 
-      // Format duration as minutes (integer)
-      const formattedData = {
+      // Check if starting time is in the future
+      if (new Date(contestDetails.starting_time) <= new Date()) {
+        setErrorMessage('The contest starting time must be in the future');
+        setLoading(false);
+        return;
+      }
+
+      // Check authentication first
+      if (!localStorage.getItem('access_token')) {
+        setErrorMessage('You are not logged in. Please log in first.');
+        setLoading(false);
+        setIsAuthenticated(false);
+        return;
+      }
+
+      // Validate duration is a positive integer
+      if (!durationMinutes || isNaN(parseInt(durationMinutes, 10)) || parseInt(durationMinutes, 10) <= 0) {
+        setErrorMessage('Duration must be a positive number');
+        setLoading(false);
+        return;
+      }
+      
+      // Create request data with proper types
+      const requestData = {
         name: contestDetails.name,
         description: contestDetails.description,
         starting_time: contestDetails.starting_time.toISOString(),
-        duration: parseInt(contestDetails.duration),
-        genre_names: contestDetails.genre_names
+        duration: parseInt(durationMinutes, 10) * 60, // Convert minutes to seconds
+        genre_names: Array.isArray(contestDetails.genre_names) ? 
+          contestDetails.genre_names.map(name => name.toLowerCase()) : []
       };
-
-      // Remove data logging
       
-      const token = localStorage.getItem('access_token');
-      // Remove token logging
+      debugValue('Request data for contest service', requestData);
       
-      const response = await axios.post(
-        'http://localhost:8000/contest/create/', 
-        formattedData,
-        {
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`
-          }
-        }
-      );
-
-      // Log full response
-      console.log('Contest creation response:', response);
-      console.log('Response data:', response.data);
-
-      if (response.status === 201) {
-        // Success
-        console.log('Contest created with ID:', response.data.id);
-        setContestId(response.data.id);
+      try {
+        // Use the contestService to create the contest
+        const createdContest = await createContest(requestData);
+        debugValue('Created contest response', createdContest);
+        
+        // Set the contest ID for the next step
+        setContestId(createdContest.id);
+        
+        // Move to the next step
         setActiveStep(1);
-        fetchProblems();
+        
+        // Fetch available problems
+        await fetchProblems();
+      } catch (apiError) {
+        console.error('API error details:', apiError);
+        
+        // Try token refresh if unauthorized
+        if (apiError.message === 'Authentication error') {
+          try {
+            console.log('Attempting token refresh...');
+            await authService.refreshToken();
+            
+            // Get new token after refresh
+            const newToken = localStorage.getItem('access_token');
+            console.log('New token after refresh (first 10 chars):', newToken ? newToken.substring(0, 10) + '...' : 'No token found');
+            
+            // Retry with new token
+            console.log('Retrying request with new token...');
+            
+            // Use the contestService again after token refresh
+            const retryContest = await createContest(requestData);
+            debugValue('Retry created contest response', retryContest);
+            
+            // Set the contest ID for the next step
+            setContestId(retryContest.id);
+            
+            // Move to the next step
+            setActiveStep(1);
+            
+            // Fetch available problems
+            await fetchProblems();
+          } catch (refreshError) {
+            console.error('Token refresh failed during contest creation:', refreshError);
+            setErrorMessage('Authentication failed. Please log out and log in again.');
+            setIsAuthenticated(false);
+          }
+        } else {
+          throw apiError; // Pass error to outer catch block
+        }
       }
     } catch (error) {
-      if (error.response) {
-        // The request was made and the server responded with a status code
-        // that falls out of the range of 2xx
-        // Remove console logs
-        if (error.response.status === 401) {
-          setErrorMessage('Authentication error. Please refresh token or log out and log in again.');
-        } else {
-          setErrorMessage(`Error: ${error.response.data.detail || 'Failed to create contest'}`);
-        }
-      } else if (error.request) {
-        // The request was made but no response was received
-        // Remove console log
-        setErrorMessage('No response from server. Please try again later.');
-      } else {
-        // Something happened in setting up the request that triggered an Error
-        setErrorMessage(`Error: ${error.message}`);
+      console.error('Error creating contest:', error);
+      
+      // Format error message
+      let errorMsg = 'Failed to create contest';
+      
+      if (error.message) {
+        errorMsg = error.message;
       }
+      
+      setErrorMessage(errorMsg);
     } finally {
       setLoading(false);
     }
@@ -427,20 +505,45 @@ const CreateContest = () => {
               />
             </LocalizationProvider>
             <TextField
-              label="Duration (minutes)"
+              label="Duration (Minutes)"
               type="number"
-              value={contestDetails.duration}
-              onChange={(e) => setContestDetails({ ...contestDetails, duration: e.target.value })}
+              value={durationMinutes}
+              onChange={(e) => {
+                const value = parseInt(e.target.value, 10);
+                if (!isNaN(value) && value > 0) {
+                  setDurationMinutes(value);
+                } else if (e.target.value === '') {
+                  setDurationMinutes('');
+                }
+              }}
+              InputProps={{
+                inputProps: { min: 1 }
+              }}
               required
               fullWidth
+              helperText="Enter the duration in minutes"
             />
-            <FormControl fullWidth>
-              <InputLabel>Genres</InputLabel>
+            <FormControl fullWidth sx={{ zIndex: 1000, mb: 2 }}>
+              <InputLabel id="genre-label">Genres</InputLabel>
               <Select
+                labelId="genre-label"
                 multiple
                 value={contestDetails.genre_names}
-                onChange={(e) => setContestDetails({ ...contestDetails, genre_names: e.target.value })}
+                onChange={(e) => {
+                  setContestDetails({ ...contestDetails, genre_names: e.target.value });
+                }}
                 renderValue={(selected) => selected.join(', ')}
+                MenuProps={{
+                  PaperProps: {
+                    style: {
+                      maxHeight: 48 * 4.5,
+                      width: 250,
+                      zIndex: 1500
+                    },
+                  },
+                  autoClose: true
+                }}
+                label="Genres"
               >
                 {genres.map((genre) => (
                   <MenuItem key={genre} value={genre}>
@@ -452,7 +555,8 @@ const CreateContest = () => {
             <Button
               variant="contained"
               onClick={handleSaveContestDetails}
-              disabled={loading || !contestDetails.name || !contestDetails.description || !contestDetails.starting_time || !contestDetails.duration}
+              disabled={loading || !contestDetails.name || !contestDetails.description || 
+                !contestDetails.starting_time || !durationMinutes || parseInt(durationMinutes, 10) <= 0}
             >
               {loading ? 'Saving...' : 'Save and Continue'}
             </Button>
@@ -536,6 +640,17 @@ const CreateContest = () => {
           <LoginForm onLoginSuccess={handleLoginSuccess} />
         ) : (
           <>
+            <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 2 }}>
+              <Button 
+                variant="outlined" 
+                color="secondary" 
+                onClick={handleLogout}
+                size="small"
+              >
+                Logout
+              </Button>
+            </Box>
+            
             <Stepper activeStep={activeStep} sx={{ mb: 4 }}>
               {steps.map((label) => (
                 <Step key={label}>

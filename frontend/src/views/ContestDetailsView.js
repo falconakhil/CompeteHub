@@ -10,6 +10,10 @@ import {
   Divider,
   Chip,
   CircularProgress,
+  List,
+  ListItem,
+  ListItemText,
+  Alert,
 } from '@mui/material';
 import contestService from '../services/contestService';
 
@@ -18,6 +22,12 @@ const ContestDetailsView = () => {
   const navigate = useNavigate();
   const [contest, setContest] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [problems, setProblems] = useState([]);
+  const [showProblems, setShowProblems] = useState(false);
+  const [problemsLoading, setProblemsLoading] = useState(false);
+  const [isRegistered, setIsRegistered] = useState(false);
+  const [registrationError, setRegistrationError] = useState(null);
+  const [unregistrationError, setUnregistrationError] = useState(null);
 
   useEffect(() => {
     const fetchContestDetails = async () => {
@@ -25,6 +35,14 @@ const ContestDetailsView = () => {
         setLoading(true);
         const data = await contestService.getContestDetails(contestId);
         setContest(data);
+        
+        // Check if user is registered for this contest
+        if (data.is_registered !== undefined) {
+          setIsRegistered(data.is_registered);
+        } else {
+          // If the backend doesn't provide this info, we'll assume they're not registered
+          setIsRegistered(false);
+        }
       } catch (error) {
         console.error('Error fetching contest details:', error);
         navigate('/contests'); // Redirect to contests list on error
@@ -38,19 +56,62 @@ const ContestDetailsView = () => {
 
   const handleRegister = async () => {
     try {
+      setRegistrationError(null);
       await contestService.registerForContest(contestId);
       // Refresh contest details after registration
       const updatedData = await contestService.getContestDetails(contestId);
       setContest(updatedData);
+      setIsRegistered(true);
     } catch (error) {
       console.error('Error registering for contest:', error);
+      setRegistrationError(error.detail || 'Failed to register for the contest');
+    }
+  };
+
+  const handleUnregister = async () => {
+    try {
+      setUnregistrationError(null);
+      await contestService.unregisterFromContest(contestId);
+      // Refresh contest details after unregistration
+      const updatedData = await contestService.getContestDetails(contestId);
+      setContest(updatedData);
+      setIsRegistered(false);
+    } catch (error) {
+      console.error('Error unregistering from contest:', error);
+      setUnregistrationError(error.detail || 'Failed to unregister from the contest');
+    }
+  };
+
+  const handleViewProblems = async () => {
+    try {
+      setProblemsLoading(true);
+      const data = await contestService.getContestProblems(contestId);
+      setProblems(data.results || data);
+      setShowProblems(true);
+    } catch (error) {
+      console.error('Error fetching contest problems:', error);
+    } finally {
+      setProblemsLoading(false);
     }
   };
 
   const formatDuration = (duration) => {
-    const hours = Math.floor(duration / 3600);
-    const minutes = Math.floor((duration % 3600) / 60);
+    // Convert duration from seconds to hours and minutes
+    const totalSeconds = duration;
+    const hours = Math.floor(totalSeconds / 3600);
+    const minutes = Math.floor((totalSeconds % 3600) / 60);
     return `${hours}h ${minutes}m`;
+  };
+
+  const getContestStatus = () => {
+    if (!contest) return 'unknown';
+    const now = new Date();
+    const startTime = new Date(contest.starting_time);
+    const endTime = new Date(startTime.getTime() + contest.duration * 1000); // Convert seconds to milliseconds
+
+    if (now < startTime) return 'future';
+    if (now > endTime) return 'completed';
+    return 'active';
   };
 
   if (loading) {
@@ -69,6 +130,8 @@ const ContestDetailsView = () => {
     );
   }
 
+  const status = getContestStatus();
+
   return (
     <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
       <Paper elevation={3} sx={{ p: 3 }}>
@@ -76,64 +139,77 @@ const ContestDetailsView = () => {
           <Grid item xs={12}>
             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
               <Typography variant="h4" component="h1">
-                {contest.title}
+                {contest.name}
               </Typography>
               <Chip 
-                label={contest.status} 
-                color={contest.status === 'active' ? 'success' : contest.status === 'future' ? 'primary' : 'default'} 
+                label={status} 
+                color={status === 'active' ? 'success' : status === 'future' ? 'primary' : 'default'} 
               />
             </Box>
           </Grid>
+
+          {registrationError && (
+            <Grid item xs={12}>
+              <Alert severity="error" sx={{ mb: 2 }}>
+                {registrationError}
+              </Alert>
+            </Grid>
+          )}
+
+          {unregistrationError && (
+            <Grid item xs={12}>
+              <Alert severity="error" sx={{ mb: 2 }}>
+                {unregistrationError}
+              </Alert>
+            </Grid>
+          )}
 
           <Grid item xs={12} md={6}>
             <Typography variant="h6" gutterBottom>
               Contest Information
             </Typography>
-            <Box sx={{ mb: 2 }}>
-              <Typography variant="subtitle1" color="textSecondary">
-                Start Time
-              </Typography>
-              <Typography variant="body1">
-                {new Date(contest.start_time).toLocaleString()}
-              </Typography>
-            </Box>
-            <Box sx={{ mb: 2 }}>
-              <Typography variant="subtitle1" color="textSecondary">
-                Duration
-              </Typography>
-              <Typography variant="body1">
-                {formatDuration(contest.duration)}
-              </Typography>
-            </Box>
-            <Box sx={{ mb: 2 }}>
-              <Typography variant="subtitle1" color="textSecondary">
-                Description
-              </Typography>
-              <Typography variant="body1">
-                {contest.description}
-              </Typography>
-            </Box>
+            <List>
+              <ListItem>
+                <ListItemText
+                  primary="Start Time"
+                  secondary={new Date(contest.starting_time).toLocaleString()}
+                />
+              </ListItem>
+              <ListItem>
+                <ListItemText
+                  primary="Duration"
+                  secondary={formatDuration(contest.duration)}
+                />
+              </ListItem>
+              <ListItem>
+                <ListItemText
+                  primary="Description"
+                  secondary={contest.description}
+                />
+              </ListItem>
+              <ListItem>
+                <ListItemText
+                  primary="Created By"
+                  secondary={contest.creator_username}
+                />
+              </ListItem>
+              <ListItem>
+                <ListItemText
+                  primary="Registration Status"
+                  secondary={isRegistered ? "Registered" : "Not Registered"}
+                />
+              </ListItem>
+            </List>
           </Grid>
 
           <Grid item xs={12} md={6}>
             <Typography variant="h6" gutterBottom>
-              Additional Details
+              Contest Genres
             </Typography>
-            <Box sx={{ mb: 2 }}>
-              <Typography variant="subtitle1" color="textSecondary">
-                Created By
-              </Typography>
-              <Typography variant="body1">
-                {contest.created_by}
-              </Typography>
-            </Box>
-            <Box sx={{ mb: 2 }}>
-              <Typography variant="subtitle1" color="textSecondary">
-                Registration Status
-              </Typography>
-              <Typography variant="body1">
-                {contest.is_registered ? 'Registered' : 'Not Registered'}
-              </Typography>
+            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+              {contest.genres.map((genre) => (
+                <Chip key={genre.id} label={genre.name} />
+              ))}
             </Box>
           </Grid>
 
@@ -141,21 +217,58 @@ const ContestDetailsView = () => {
             <Divider sx={{ my: 2 }} />
           </Grid>
 
+          {showProblems && (
+            <Grid item xs={12}>
+              <Typography variant="h6" gutterBottom>
+                Contest Problems
+              </Typography>
+              {problemsLoading ? (
+                <Box sx={{ display: 'flex', justifyContent: 'center', my: 2 }}>
+                  <CircularProgress />
+                </Box>
+              ) : problems.length > 0 ? (
+                <List>
+                  {problems.map((problem) => (
+                    <ListItem key={problem.id} button onClick={() => navigate(`/problems/${problem.id}`)}>
+                      <ListItemText
+                        primary={problem.title}
+                      />
+                    </ListItem>
+                  ))}
+                </List>
+              ) : (
+                <Typography>No problems found for this contest.</Typography>
+              )}
+            </Grid>
+          )}
+
           <Grid item xs={12}>
-            <Box sx={{ display: 'flex', gap: 2, justifyContent: 'flex-end' }}>
-              <Button
-                variant="outlined"
-                onClick={() => navigate('/contests')}
-              >
-                Back to Contests
-              </Button>
-              {contest.status === 'future' && !contest.is_registered && (
+            <Box sx={{ display: 'flex', gap: 2, justifyContent: 'flex-end', mt: 2 }}>
+              {isRegistered ? (
+                <>
+                  <Button
+                    variant="contained"
+                    color="primary"
+                    onClick={() => navigate(`/contests/${contestId}/problems`)}
+                    disabled={status !== 'active'}
+                  >
+                    Enter Contest
+                  </Button>
+                  <Button
+                    variant="outlined"
+                    color="error"
+                    onClick={handleUnregister}
+                  >
+                    Unregister
+                  </Button>
+                </>
+              ) : (
                 <Button
                   variant="contained"
                   color="primary"
                   onClick={handleRegister}
                 >
-                  Register for Contest
+                  Register
                 </Button>
               )}
             </Box>
