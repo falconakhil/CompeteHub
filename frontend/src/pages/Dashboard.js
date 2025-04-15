@@ -34,11 +34,11 @@ const Dashboard = () => {
     try {
       setLoading(true);
       // Fetch upcoming contests
-      const upcomingData = await contestService.getContests('future');
+      const upcomingData = await contestService.getUpcomingContests();
       setUpcomingContests(upcomingData.results || upcomingData);
       
       // Fetch active contests
-      const activeData = await contestService.getContests('active');
+      const activeData = await contestService.getActiveContests();
       setActiveContests(activeData.results || activeData);
     } catch (error) {
       console.error('Error fetching contests:', error);

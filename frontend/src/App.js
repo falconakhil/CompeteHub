@@ -15,6 +15,7 @@ import ContestDetailsView from './views/ContestDetailsView';
 import ContestProblemView from './views/ContestProblemView';
 import ContestProblemsView from './views/ContestProblemsView';
 import ProblemSetView from './views/ProblemSetView';
+import ProblemDetailView from './views/ProblemDetailView';
 
 const theme = createTheme({
   palette: {
@@ -50,6 +51,14 @@ const theme = createTheme({
       styleOverrides: {
         root: {
           borderRadius: 8,
+        },
+      },
+    },
+    MuiCssBaseline: {
+      styleOverrides: {
+        '*::selection': {
+          backgroundColor: '#3f51b5',
+          color: '#ffffff',
         },
       },
     },
@@ -91,6 +100,7 @@ function App() {
               <Route path="/create-contest" element={<CreateContest />} />
               <Route path="/create-problem" element={<CreateProblem />} />
               <Route path="/problem-set" element={<ProblemSetView />} />
+              <Route path="/problems/:problemId" element={<ProblemDetailView />} />
               <Route path="/contests" element={<ContestListView />} />
               <Route path="/contests/:contestId" element={<ContestDetailsView />} />
               <Route path="/contests/:contestId/problems" element={<ContestProblemsView />} />

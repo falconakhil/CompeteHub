@@ -31,11 +31,25 @@ const ContestListView = () => {
   const fetchContests = async () => {
     try {
       setLoading(true);
-      const response = await contestService.getContests(contestType, page);
-      setContests(response.results);
-      setTotalPages(Math.ceil(response.count / 10)); // Assuming 10 items per page
+      let response;
+      
+      switch (contestType) {
+        case 'active':
+          response = await contestService.getActiveContests();
+          break;
+        case 'future':
+          response = await contestService.getUpcomingContests();
+          break;
+        default:
+          response = { results: [], count: 0 };
+      }
+      
+      setContests(Array.isArray(response) ? response : response.results || []);
+      setTotalPages(Math.ceil((response.count || response.length || 0) / 10)); // Assuming 10 items per page
     } catch (error) {
       console.error('Error fetching contests:', error);
+      setContests([]);
+      setTotalPages(1);
     } finally {
       setLoading(false);
     }

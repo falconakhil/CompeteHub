@@ -25,9 +25,9 @@ const ContestDetailsView = () => {
   const [problems, setProblems] = useState([]);
   const [showProblems, setShowProblems] = useState(false);
   const [problemsLoading, setProblemsLoading] = useState(false);
+  const [error, setError] = useState(null);
   const [isRegistered, setIsRegistered] = useState(false);
   const [registrationError, setRegistrationError] = useState(null);
-  const [unregistrationError, setUnregistrationError] = useState(null);
 
   useEffect(() => {
     const fetchContestDetails = async () => {
@@ -35,24 +35,17 @@ const ContestDetailsView = () => {
         setLoading(true);
         const data = await contestService.getContestDetails(contestId);
         setContest(data);
-        
-        // Check if user is registered for this contest
-        if (data.is_registered !== undefined) {
-          setIsRegistered(data.is_registered);
-        } else {
-          // If the backend doesn't provide this info, we'll assume they're not registered
-          setIsRegistered(false);
-        }
+        setIsRegistered(data.is_registered);
       } catch (error) {
         console.error('Error fetching contest details:', error);
-        navigate('/contests'); // Redirect to contests list on error
+        setError(error.detail || 'Failed to load contest');
       } finally {
         setLoading(false);
       }
     };
 
     fetchContestDetails();
-  }, [contestId, navigate]);
+  }, [contestId]);
 
   const handleRegister = async () => {
     try {
@@ -70,7 +63,7 @@ const ContestDetailsView = () => {
 
   const handleUnregister = async () => {
     try {
-      setUnregistrationError(null);
+      setRegistrationError(null);
       await contestService.unregisterFromContest(contestId);
       // Refresh contest details after unregistration
       const updatedData = await contestService.getContestDetails(contestId);
@@ -78,7 +71,7 @@ const ContestDetailsView = () => {
       setIsRegistered(false);
     } catch (error) {
       console.error('Error unregistering from contest:', error);
-      setUnregistrationError(error.detail || 'Failed to unregister from the contest');
+      setRegistrationError(error.detail || 'Failed to unregister from the contest');
     }
   };
 
@@ -104,20 +97,44 @@ const ContestDetailsView = () => {
   };
 
   const getContestStatus = () => {
-    if (!contest) return 'unknown';
+    if (!contest) return null;
     const now = new Date();
     const startTime = new Date(contest.starting_time);
-    const endTime = new Date(startTime.getTime() + contest.duration * 1000); // Convert seconds to milliseconds
+    const endTime = new Date(startTime.getTime() + contest.duration * 1000);
 
-    if (now < startTime) return 'future';
-    if (now > endTime) return 'completed';
-    return 'active';
+    if (now < startTime) {
+      return {
+        status: 'Upcoming',
+        color: 'info',
+        time: `Starts in ${Math.ceil((startTime - now) / (1000 * 60 * 60))} hours`
+      };
+    } else if (now < endTime) {
+      return {
+        status: 'Active',
+        color: 'success',
+        time: `Ends in ${Math.ceil((endTime - now) / (1000 * 60))} minutes`
+      };
+    } else {
+      return {
+        status: 'Completed',
+        color: 'default',
+        time: 'Contest has ended'
+      };
+    }
   };
 
   if (loading) {
     return (
       <Container sx={{ display: 'flex', justifyContent: 'center', mt: 4 }}>
         <CircularProgress />
+      </Container>
+    );
+  }
+
+  if (error) {
+    return (
+      <Container>
+        <Alert severity="error">{error}</Alert>
       </Container>
     );
   }
@@ -137,92 +154,96 @@ const ContestDetailsView = () => {
       <Paper elevation={3} sx={{ p: 3 }}>
         <Grid container spacing={3}>
           <Grid item xs={12}>
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-              <Typography variant="h4" component="h1">
-                {contest.name}
-              </Typography>
-              <Chip 
-                label={status} 
-                color={status === 'active' ? 'success' : status === 'future' ? 'primary' : 'default'} 
-              />
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+              <Box>
+                <Typography variant="h4" component="h1" gutterBottom>
+                  {contest.name}
+                </Typography>
+                <Chip
+                  label={status.status}
+                  color={status.color}
+                  sx={{ mr: 1 }}
+                />
+                <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+                  {status.time}
+                </Typography>
+              </Box>
+              <Box>
+                {status.status === 'Upcoming' && (
+                  isRegistered ? (
+                    <Button
+                      variant="outlined"
+                      color="error"
+                      onClick={handleUnregister}
+                    >
+                      Unregister
+                    </Button>
+                  ) : (
+                    <Button
+                      variant="contained"
+                      color="primary"
+                      onClick={handleRegister}
+                    >
+                      Register
+                    </Button>
+                  )
+                )}
+                {status.status === 'Active' && isRegistered && (
+                  <Button
+                    variant="contained"
+                    color="primary"
+                    onClick={() => navigate(`/contests/${contestId}/problems`)}
+                  >
+                    Enter Contest
+                  </Button>
+                )}
+              </Box>
             </Box>
           </Grid>
 
           {registrationError && (
             <Grid item xs={12}>
-              <Alert severity="error" sx={{ mb: 2 }}>
-                {registrationError}
-              </Alert>
+              <Alert severity="error">{registrationError}</Alert>
             </Grid>
           )}
-
-          {unregistrationError && (
-            <Grid item xs={12}>
-              <Alert severity="error" sx={{ mb: 2 }}>
-                {unregistrationError}
-              </Alert>
-            </Grid>
-          )}
-
-          <Grid item xs={12} md={6}>
-            <Typography variant="h6" gutterBottom>
-              Contest Information
-            </Typography>
-            <List>
-              <ListItem>
-                <ListItemText
-                  primary="Start Time"
-                  secondary={new Date(contest.starting_time).toLocaleString()}
-                />
-              </ListItem>
-              <ListItem>
-                <ListItemText
-                  primary="Duration"
-                  secondary={formatDuration(contest.duration)}
-                />
-              </ListItem>
-              <ListItem>
-                <ListItemText
-                  primary="Description"
-                  secondary={contest.description}
-                />
-              </ListItem>
-              <ListItem>
-                <ListItemText
-                  primary="Created By"
-                  secondary={contest.creator_username}
-                />
-              </ListItem>
-              <ListItem>
-                <ListItemText
-                  primary="Registration Status"
-                  secondary={isRegistered ? "Registered" : "Not Registered"}
-                />
-              </ListItem>
-            </List>
-          </Grid>
-
-          <Grid item xs={12} md={6}>
-            <Typography variant="h6" gutterBottom>
-              Contest Genres
-            </Typography>
-            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
-              {contest.genres.map((genre) => (
-                <Chip key={genre.id} label={genre.name} />
-              ))}
-            </Box>
-          </Grid>
 
           <Grid item xs={12}>
             <Divider sx={{ my: 2 }} />
           </Grid>
 
-          {showProblems && (
-            <Grid item xs={12}>
-              <Typography variant="h6" gutterBottom>
-                Contest Problems
-              </Typography>
-              {problemsLoading ? (
+          <Grid item xs={12}>
+            <Typography variant="h6" gutterBottom>
+              Contest Details
+            </Typography>
+            <Typography variant="body1" paragraph>
+              {contest.description}
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              Created by: {contest.creator_username}
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              Duration: {Math.floor(contest.duration / 60)}h {contest.duration % 60}m
+            </Typography>
+          </Grid>
+
+          <Grid item xs={12}>
+            <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+              {contest.genres?.map((genre) => (
+                <Chip
+                  key={genre.id}
+                  label={genre.name}
+                  variant="outlined"
+                />
+              ))}
+            </Box>
+          </Grid>
+
+          <Grid item xs={12}>
+            <Typography variant="h6" gutterBottom>
+              Contest Problems
+            </Typography>
+            {showProblems ? (
+              problemsLoading ? (
                 <Box sx={{ display: 'flex', justifyContent: 'center', my: 2 }}>
                   <CircularProgress />
                 </Box>
@@ -238,40 +259,16 @@ const ContestDetailsView = () => {
                 </List>
               ) : (
                 <Typography>No problems found for this contest.</Typography>
-              )}
-            </Grid>
-          )}
-
-          <Grid item xs={12}>
-            <Box sx={{ display: 'flex', gap: 2, justifyContent: 'flex-end', mt: 2 }}>
-              {isRegistered ? (
-                <>
-                  <Button
-                    variant="contained"
-                    color="primary"
-                    onClick={() => navigate(`/contests/${contestId}/problems`)}
-                    disabled={status !== 'active'}
-                  >
-                    Enter Contest
-                  </Button>
-                  <Button
-                    variant="outlined"
-                    color="error"
-                    onClick={handleUnregister}
-                  >
-                    Unregister
-                  </Button>
-                </>
-              ) : (
-                <Button
-                  variant="contained"
-                  color="primary"
-                  onClick={handleRegister}
-                >
-                  Register
-                </Button>
-              )}
-            </Box>
+              )
+            ) : (
+              <Button
+                variant="contained"
+                color="primary"
+                onClick={handleViewProblems}
+              >
+                View Problems
+              </Button>
+            )}
           </Grid>
         </Grid>
       </Paper>

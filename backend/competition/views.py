@@ -181,7 +181,6 @@ class ActiveContestsView(ListAPIView):
                 output_field=DateTimeField()
             )
         ).filter(
-            creator=self.request.user,
             starting_time__lte=now,  # Contest has started
             end_time__gte=now        # Contest has not ended
         ).order_by('-end_time')  # Sort by ending time in decreasing order
@@ -541,17 +540,36 @@ class ContestProblemByOrderView(APIView):
         # Get the problem by its order
         contest_problem = ContestProblem.objects.filter(
             contest=contest
-        ).order_by('order')[order - 1:order].first()
-        
+        ).order_by('order').first()
+
         if not contest_problem:
             return Response(
                 {"detail": "Problem not found."},
                 status=status.HTTP_404_NOT_FOUND
             )
         
+        # Get all problems to determine the current problem's order
+        contest_problems = ContestProblem.objects.filter(contest=contest).order_by('order')
+        problem_list = list(contest_problems)
+        current_problem = None
+        
+        # Find the problem with the specified order
+        for i, cp in enumerate(problem_list, 1):
+            if i == order:
+                current_problem = cp
+                break
+        
+        if not current_problem:
+            return Response(
+                {"detail": "Problem not found."},
+                status=status.HTTP_404_NOT_FOUND
+            )
+        
         # Serialize the problem
-        serializer = ProblemSerializer(contest_problem.problem)
-        return Response(serializer.data)
+        serializer = ProblemSerializer(current_problem.problem)
+        data = serializer.data
+        data['order'] = order  # Add the order number to the response
+        return Response(data)
 
 class ContestProblemSubmitView(APIView):
     """
@@ -600,25 +618,47 @@ class ContestProblemSubmitView(APIView):
                 status=status.HTTP_403_FORBIDDEN
             )
         
-        # Get the problem by its order
-        contest_problem = ContestProblem.objects.filter(
-            contest=contest
-        ).order_by('order')[order - 1:order].first()
+        # Get all problems to determine the current problem's order
+        contest_problems = ContestProblem.objects.filter(contest=contest).order_by('order')
+        problem_list = list(contest_problems)
+        current_problem = None
         
-        if not contest_problem:
+        # Find the problem with the specified order
+        for i, cp in enumerate(problem_list, 1):
+            if i == order:
+                current_problem = cp
+                break
+        
+        if not current_problem:
             return Response(
                 {"detail": "Problem not found."},
                 status=status.HTTP_404_NOT_FOUND
             )
         
+        # Compare the submitted answer with the problem's answer (case-insensitive)
+        submitted_answer = request.data.get('answer', '').strip().lower()
+        correct_answer = current_problem.problem.answer.strip().lower()
+        is_correct = submitted_answer == correct_answer
+        
         # Update participation stats
         participation.last_submission_time = now
         participation.submissions_count += 1
+        if is_correct:
+            participation.score += current_problem.points
         participation.save()
         
-        # TODO: Implement answer checking logic here
-        # For now, just return success
+        # Create a submission record
+        submission_data = {
+            'content': request.data.get('answer', ''),
+            'problem': current_problem.problem.id,
+            'evaluation_status': 'Correct' if is_correct else 'Wrong'
+        }
+        submission_serializer = SubmissionSerializer(data=submission_data)
+        if submission_serializer.is_valid():
+            submission_serializer.save(user=request.user)
+        
         return Response({
             "detail": "Answer submitted successfully",
-            "correct": True  # This should be based on actual answer checking
+            "correct": is_correct,
+            "points_awarded": current_problem.points if is_correct else 0
         })

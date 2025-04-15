@@ -11,6 +11,10 @@ import {
   Alert,
   TextField,
   Divider,
+  FormControl,
+  RadioGroup,
+  FormControlLabel,
+  Radio,
 } from '@mui/material';
 import contestService from '../services/contestService';
 
@@ -23,6 +27,7 @@ const ContestProblemView = () => {
   const [answer, setAnswer] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState(null);
+  const [submitSuccess, setSubmitSuccess] = useState(null);
 
   useEffect(() => {
     const fetchProblem = async () => {
@@ -46,14 +51,77 @@ const ContestProblemView = () => {
     try {
       setSubmitting(true);
       setSubmitError(null);
-      await contestService.submitContestProblem(contestId, problemOrder, answer);
-      navigate(`/contests/${contestId}/problems`);
+      setSubmitSuccess(null);
+      
+      const response = await contestService.submitContestProblem(contestId, problemOrder, answer);
+      
+      if (response.correct) {
+        setSubmitSuccess({
+          message: "Correct answer!",
+          correct: true,
+          points: response.points_awarded
+        });
+      } else {
+        setSubmitSuccess({
+          message: "Wrong answer, try again!",
+          correct: false,
+          points: 0
+        });
+      }
+      
+      // Don't clear the answer if it was wrong
+      if (response.correct) {
+        setAnswer('');
+      }
     } catch (error) {
       console.error('Error submitting answer:', error);
       setSubmitError(error.detail || 'Failed to submit answer');
     } finally {
       setSubmitting(false);
     }
+  };
+
+  const renderAnswerInput = () => {
+    // Check if the question contains "Options:" to determine if it's MCQ
+    const isMCQ = problem?.question.includes('Options:');
+    
+    if (isMCQ) {
+      // Extract options from the question
+      const optionsText = problem.question.split('Options:')[1];
+      const options = optionsText.split(/\d+\./).filter(opt => opt.trim());
+      
+      return (
+        <FormControl component="fieldset">
+          <RadioGroup
+            value={answer}
+            onChange={(e) => setAnswer(e.target.value)}
+          >
+            {options.map((option, index) => (
+              <FormControlLabel
+                key={index}
+                value={option.trim()}
+                control={<Radio />}
+                label={option.trim()}
+                disabled={submitting}
+              />
+            ))}
+          </RadioGroup>
+        </FormControl>
+      );
+    }
+    
+    return (
+      <TextField
+        fullWidth
+        multiline
+        rows={4}
+        value={answer}
+        onChange={(e) => setAnswer(e.target.value)}
+        placeholder="Enter your answer here..."
+        variant="outlined"
+        disabled={submitting}
+      />
+    );
   };
 
   if (loading) {
@@ -87,42 +155,33 @@ const ContestProblemView = () => {
           <Grid item xs={12}>
             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
               <Typography variant="h4" component="h1">
-                Problem {problemOrder}: {problem?.title}
+                Problem {problemOrder}: {problem.title}
               </Typography>
             </Box>
           </Grid>
 
           <Grid item xs={12}>
             <Typography variant="body1" sx={{ whiteSpace: 'pre-wrap' }}>
-              {problem?.question}
+              {problem.question.split('Options:')[0]}
             </Typography>
+            {problem.question.includes('Options:') && (
+              <Typography variant="body1" sx={{ mt: 2, fontWeight: 'bold' }}>
+                Options:
+              </Typography>
+            )}
           </Grid>
 
           <Grid item xs={12}>
             <Divider sx={{ my: 2 }} />
           </Grid>
 
-          {submitError && (
-            <Grid item xs={12}>
-              <Alert severity="error" sx={{ mb: 2 }}>
-                {submitError}
-              </Alert>
-            </Grid>
-          )}
-
           <Grid item xs={12}>
-            <Box component="form" onSubmit={handleSubmit}>
-              <TextField
-                fullWidth
-                label="Your Answer"
-                multiline
-                rows={4}
-                value={answer}
-                onChange={(e) => setAnswer(e.target.value)}
-                required
-                sx={{ mb: 2 }}
-              />
-              <Box sx={{ display: 'flex', gap: 2, justifyContent: 'flex-end' }}>
+            <Typography variant="h6" gutterBottom>
+              Submit Your Answer
+            </Typography>
+            <form onSubmit={handleSubmit}>
+              {renderAnswerInput()}
+              <Box sx={{ mt: 2, display: 'flex', justifyContent: 'space-between' }}>
                 <Button
                   variant="outlined"
                   onClick={() => navigate(`/contests/${contestId}/problems`)}
@@ -133,13 +192,33 @@ const ContestProblemView = () => {
                   type="submit"
                   variant="contained"
                   color="primary"
-                  disabled={submitting}
+                  disabled={submitting || !answer.trim()}
                 >
-                  {submitting ? 'Submitting...' : 'Submit Answer'}
+                  {submitting ? 'Submitting...' : 'Submit'}
                 </Button>
               </Box>
-            </Box>
+            </form>
           </Grid>
+
+          {submitError && (
+            <Grid item xs={12}>
+              <Alert severity="error" sx={{ mt: 2 }}>
+                {submitError}
+              </Alert>
+            </Grid>
+          )}
+
+          {submitSuccess && (
+            <Grid item xs={12}>
+              <Alert 
+                severity={submitSuccess.correct ? "success" : "error"}
+                sx={{ mt: 2 }}
+              >
+                {submitSuccess.message}
+                {submitSuccess.correct && ` (+${submitSuccess.points} points)`}
+              </Alert>
+            </Grid>
+          )}
         </Grid>
       </Paper>
     </Container>

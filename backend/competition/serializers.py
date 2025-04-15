@@ -18,7 +18,7 @@ class ContestSerializer(serializers.ModelSerializer):
         write_only=True
     )
     
-    creator_username = serializers.ReadOnlyField(source='creator.user.username')
+    creator_username = serializers.ReadOnlyField(source='creator.username')
     duration = serializers.IntegerField(help_text="Duration in minutes")
     
     class Meta:

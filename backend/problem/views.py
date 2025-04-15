@@ -117,6 +117,13 @@ class SubmissionCreateView(APIView):
         data = request.data.copy()
         data['problem'] = problem_id
 
+        # Compare the submitted answer with the problem's answer (case-insensitive)
+        submitted_answer = data.get('content', '').strip().lower()
+        correct_answer = problem.answer.strip().lower()
+        
+        # Set evaluation status based on comparison
+        data['evaluation_status'] = 'Correct' if submitted_answer == correct_answer else 'Wrong'
+        
         serializer = SubmissionSerializer(data=data)
         if serializer.is_valid():
             serializer.save(user=request.user)
@@ -143,3 +150,27 @@ class SubmissionListView(ListAPIView):
         queryset = Submission.objects.filter(problem_id=problem_id)
         serializer = self.get_serializer(queryset, many=True)
         return Response(serializer.data)
+
+class ProblemDetailView(APIView):
+    """
+    API endpoint for retrieving details of a specific problem.
+
+    Permissions:
+    - Only authenticated users can access this endpoint.
+
+    URL Parameters:
+    - pk: Problem ID
+
+    Response:
+    - 200 OK: Returns the problem details
+    - 404 Not Found: Problem does not exist
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, pk):
+        try:
+            problem = Problem.objects.get(id=pk)
+            serializer = ProblemSerializer(problem)
+            return Response(serializer.data)
+        except Problem.DoesNotExist:
+            return Response({"error": "Problem not found"}, status=status.HTTP_404_NOT_FOUND)
