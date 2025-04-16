@@ -65,24 +65,11 @@ const ContestProblemView = () => {
       setSubmitError(null);
       setSubmitSuccess(null);
 
-      console.log("Submitting answer:", answer);
-
       const response = await contestService.submitContestProblem(
         contestId,
         problemOrder,
         answer
       );
-
-      // Enhanced logging
-      console.log("Submission response received:");
-      console.log(response);
-      console.table(response); // Display as table for better readability
-
-      // Log individual properties to make sure they're accessible
-      console.log("Response properties:");
-      Object.keys(response).forEach((key) => {
-        console.log(`${key}:`, response[key]);
-      });
 
       if (response.correct) {
         setSubmitSuccess({
@@ -90,8 +77,8 @@ const ContestProblemView = () => {
           correct: true,
           points: response.points_awarded,
           remarks: response.remarks,
+          score: response.score
         });
-        setHasCorrectSubmission(true);
         setAnswer(""); // Clear the answer only if it was correct
       } else {
         setSubmitSuccess({
@@ -99,15 +86,12 @@ const ContestProblemView = () => {
           correct: false,
           points: 0,
           remarks: response.remarks,
-          score: response.score,
-          maxScore: response.max_score,
+          score: response.score
         });
       }
     } catch (error) {
       console.error("Error submitting answer:", error);
-      console.log("Error details:", error.message);
-      console.log("Full error object:", JSON.stringify(error, null, 2));
-      setSubmitError(error.message || "Failed to submit answer");
+      setSubmitError(error.detail || "Failed to submit answer");
     } finally {
       setSubmitting(false);
     }
@@ -227,9 +211,7 @@ const ContestProblemView = () => {
             </Typography>
             <form onSubmit={handleSubmit}>
               {renderAnswerInput()}
-              <Box
-                sx={{ mt: 2, display: "flex", justifyContent: "space-between" }}
-              >
+              <Box sx={{ mt: 2, display: "flex", justifyContent: "space-between" }}>
                 <Button
                   variant="outlined"
                   onClick={() => navigate(`/contests/${contestId}/problems`)}
@@ -240,54 +222,45 @@ const ContestProblemView = () => {
                   type="submit"
                   variant="contained"
                   color="primary"
-                  disabled={
-                    submitting || !answer.trim() || hasCorrectSubmission
-                  }
+                  disabled={submitting || hasCorrectSubmission}
                 >
-                  {submitting
-                    ? "Submitting..."
-                    : hasCorrectSubmission
-                    ? "Already Correct"
-                    : "Submit"}
+                  {submitting ? "Submitting..." : "Submit Answer"}
                 </Button>
               </Box>
             </form>
           </Grid>
 
-          {submitError && (
-            <Grid item xs={12}>
-              <Alert severity="error" sx={{ mt: 2 }}>
-                {submitError}
+          {submitSuccess && (
+            <Grid item xs={12} sx={{ mt: 3 }}>
+              <Alert
+                severity={submitSuccess.correct ? "success" : "error"}
+                sx={{ mb: 2 }}
+              >
+                {submitSuccess.message}
+                {submitSuccess.points > 0 && (
+                  <Typography variant="body2" sx={{ mt: 1 }}>
+                    Points awarded: {submitSuccess.points}
+                  </Typography>
+                )}
               </Alert>
+              
+              <Paper elevation={2} sx={{ p: 2, mt: 2 }}>
+                <Typography variant="subtitle1" gutterBottom>
+                  Evaluation Details
+                </Typography>
+                <Typography variant="body2" color="text.secondary" gutterBottom>
+                  Score: {submitSuccess.score}/100
+                </Typography>
+                <Typography variant="body2" sx={{ mt: 1 }}>
+                  {submitSuccess.remarks}
+                </Typography>
+              </Paper>
             </Grid>
           )}
 
-          {submitSuccess && (
-            <Grid item xs={12}>
-              <Alert
-                severity={submitSuccess.correct ? "success" : "error"}
-                sx={{ mt: 2 }}
-              >
-                <Typography variant="body2">
-                  {submitSuccess.message}
-                  {submitSuccess.correct &&
-                    ` (+${submitSuccess.points} points)`}
-                </Typography>
-
-                {submitSuccess.remarks && (
-                  <Typography variant="body2" sx={{ mt: 1 }}>
-                    <strong>Remarks:</strong> {submitSuccess.remarks}
-                  </Typography>
-                )}
-
-                {!submitSuccess.correct &&
-                  submitSuccess.score !== undefined && (
-                    <Typography variant="body2" sx={{ mt: 1 }}>
-                      <strong>Score:</strong> {submitSuccess.score} /{" "}
-                      {submitSuccess.maxScore || 100}
-                    </Typography>
-                  )}
-              </Alert>
+          {submitError && (
+            <Grid item xs={12} sx={{ mt: 3 }}>
+              <Alert severity="error">{submitError}</Alert>
             </Grid>
           )}
         </Grid>

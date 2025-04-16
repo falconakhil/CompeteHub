@@ -18,6 +18,8 @@ from django.db.models import F, ExpressionWrapper, DateTimeField
 from datetime import timedelta
 
 import logging
+from problem.llm_evaluation import llm_evaluate
+
 logger = logging.getLogger(__name__)
 
 class ContestCreateView(APIView):
@@ -655,30 +657,38 @@ class ContestProblemSubmitView(APIView):
                 status=status.HTTP_404_NOT_FOUND
             )
         
-        # Compare the submitted answer with the problem's answer (case-insensitive)
-        submitted_answer = request.data.get('answer', '').strip().lower()
-        correct_answer = current_problem.problem.answer.strip().lower()
-        is_correct = submitted_answer == correct_answer
+        # Get the problem and compare answers
+        current_problem = problem_list[order - 1].problem
+        submitted_answer = request.data.get('answer', '').strip()
         
-        # Update participation stats
-        participation.last_submission_time = now
-        participation.submissions_count += 1
+        # Get LLM evaluation
+        score, remarks = llm_evaluate(
+            current_problem.question,
+            current_problem.answer,
+            submitted_answer
+        )
+        
+        # Determine if the answer is correct based on score threshold
+        is_correct = score >= 80  # You can adjust this threshold
+        
+        # Create submission record
+        submission = Submission.objects.create(
+            user=request.user,
+            problem=current_problem,
+            content=submitted_answer,
+            evaluation_status='Correct' if is_correct else 'Wrong',
+            score=score,
+            remarks=remarks
+        )
+        
+        # Update participation stats if correct
         if is_correct:
-            participation.score += current_problem.points
-        participation.save()
-        
-        # Create a submission record
-        submission_data = {
-            'content': request.data.get('answer', ''),
-            'problem': current_problem.problem.id,
-            'evaluation_status': 'Correct' if is_correct else 'Wrong'
-        }
-        submission_serializer = SubmissionSerializer(data=submission_data)
-        if submission_serializer.is_valid():
-            submission_serializer.save(user=request.user)
+            participation.score += problem_list[order - 1].points
+            participation.save()
         
         return Response({
-            "detail": "Answer submitted successfully",
             "correct": is_correct,
-            "points_awarded": current_problem.points if is_correct else 0
+            "points_awarded": problem_list[order - 1].points if is_correct else 0,
+            "score": score,
+            "remarks": remarks
         })

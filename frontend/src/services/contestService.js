@@ -103,10 +103,7 @@ export const submitContestProblem = async (contestId, order, answer) => {
     );
     return response.data;
   } catch (error) {
-    if (error.response?.status === 403) {
-      throw new Error('You must be registered for this contest to submit answers.');
-    }
-    throw new Error(error.response?.data?.detail || 'An error occurred while submitting the answer');
+    throw error.response?.data || { detail: 'An error occurred while submitting the answer' };
   }
 };
 
