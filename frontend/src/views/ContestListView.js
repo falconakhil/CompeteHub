@@ -40,6 +40,9 @@ const ContestListView = () => {
         case 'future':
           response = await contestService.getUpcomingContests();
           break;
+        case 'completed':
+          response = await contestService.getPastContests();
+          break;
         default:
           response = { results: [], count: 0 };
       }
@@ -94,8 +97,11 @@ const ContestListView = () => {
   };
 
   const formatDuration = (duration) => {
-    const hours = Math.floor(duration / 3600);
-    const minutes = Math.floor((duration % 3600) / 60);
+    const hours = Math.floor(duration / 60);
+    const minutes = duration % 60;
+    if (hours === 0) {
+      return `${minutes}m`;
+    }
     return `${hours}h ${minutes}m`;
   };
 
@@ -155,7 +161,14 @@ const ContestListView = () => {
                       {contest.name}
                     </Typography>
                     <Typography color="text.secondary" gutterBottom>
-                      Starts: {new Date(contest.starting_time).toLocaleString()}
+                      Starts: {new Date(contest.starting_time).toLocaleString(undefined, {
+                        year: 'numeric',
+                        month: 'short',
+                        day: 'numeric',
+                        hour: '2-digit',
+                        minute: '2-digit',
+                        second: '2-digit'
+                      })}
                     </Typography>
                     <Typography variant="body2">
                       {contest.description}
@@ -188,7 +201,16 @@ const ContestListView = () => {
                         Register
                       </Button>
                     )}
-                    {contest.is_registered && (
+                    {contestType === 'active' && contest.is_registered && (
+                      <Button 
+                        size="small" 
+                        color="primary"
+                        onClick={() => navigate(`/contests/${contest.id}/problems`)}
+                      >
+                        Enter Contest
+                      </Button>
+                    )}
+                    {contest.is_registered && contestType === 'future' && (
                       <Chip 
                         label="Registered" 
                         color="success" 

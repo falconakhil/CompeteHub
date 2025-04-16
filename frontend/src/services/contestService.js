@@ -39,6 +39,17 @@ export const getUpcomingContests = async () => {
   }
 };
 
+export const getPastContests = async () => {
+  try {
+    const response = await axios.get(`${API_URL}list/completed/`, {
+      headers: getAuthHeader()
+    });
+    return response.data;
+  } catch (error) {
+    throw error.response?.data || { detail: 'An error occurred while fetching past contests' };
+  }
+};
+
 export const registerForContest = async (contestId) => {
   try {
     const response = await axios.post(`${API_URL}register/${contestId}/`, {}, {
@@ -116,6 +127,7 @@ const contestService = {
   getContestDetails,
   getActiveContests,
   getUpcomingContests,
+  getPastContests,
   registerForContest,
   unregisterFromContest,
   getContestProblems,

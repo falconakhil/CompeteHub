@@ -16,6 +16,9 @@ from .models import Contest, ContestGenre, Participation,ContestProblem
 from django.utils import timezone
 from django.db.models import F, ExpressionWrapper, DateTimeField
 
+import logging
+logger = logging.getLogger(__name__)
+
 class ContestCreateView(APIView):
     """
     API endpoint for creating a new contest
@@ -197,8 +200,10 @@ class CompletedContestsView(ListAPIView):
 
     def get_queryset(self):
         now = timezone.now()
+        logger.info(f'Current time: {now}')
+        
         # Filter contests that have ended (end_time < now)
-        return Contest.objects.annotate(
+        queryset = Contest.objects.annotate(
             end_time=ExpressionWrapper(
                 F('starting_time') + (F('duration') * timezone.timedelta(minutes=1)), 
                 output_field=DateTimeField()
@@ -206,6 +211,9 @@ class CompletedContestsView(ListAPIView):
         ).filter(
             end_time__lt=now  # Contest has ended
         ).order_by('-end_time')  # Sort by end time, most recent first
+        
+        logger.info(f'Found {queryset.count()} completed contests')
+        return queryset
 
 class ContestRegistrationView(APIView):
     """
