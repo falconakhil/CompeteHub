@@ -6,7 +6,7 @@ from rest_framework.permissions import IsAuthenticated
 from .models import Problem, ProblemGenre, Submission
 from .serializers import ProblemSerializer, SubmissionSerializer
 from rest_framework.pagination import PageNumberPagination
-from llm_evaluation import llm_evaluate
+from .llm_evaluation import llm_evaluate
 
 
 class ProblemCreateView(APIView):
