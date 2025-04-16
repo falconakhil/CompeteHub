@@ -34,6 +34,7 @@ class Submission(models.Model):
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="submissions")
     problem = models.ForeignKey(Problem, on_delete=models.CASCADE, related_name="submissions")
     content = models.TextField(help_text="The submitted solution/content")
+    score=models.FloatField(default=0, help_text="Score of the submission")  # New field added
     evaluation_status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='Unknown')
     remarks = models.TextField(blank=True, null=True, help_text="Additional remarks about the submission")  # New field added
     created_at = models.DateTimeField(auto_now_add=True)
