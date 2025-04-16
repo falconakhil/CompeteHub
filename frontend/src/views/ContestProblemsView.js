@@ -15,6 +15,7 @@ import {
   Alert,
   Divider,
 } from '@mui/material';
+import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import axios from 'axios';
 
 const ContestProblemsView = () => {
@@ -24,6 +25,7 @@ const ContestProblemsView = () => {
   const [contest, setContest] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [solvedProblems, setSolvedProblems] = useState(new Set());
 
   useEffect(() => {
     const fetchContestAndProblems = async () => {
@@ -48,13 +50,38 @@ const ContestProblemsView = () => {
           }
         );
         
+        let problemsData;
         if (problemsResponse.data.results) {
-          setProblems(problemsResponse.data.results);
+          problemsData = problemsResponse.data.results;
         } else if (Array.isArray(problemsResponse.data)) {
-          setProblems(problemsResponse.data);
+          problemsData = problemsResponse.data;
         } else {
           setError('Invalid response format for problems');
+          return;
         }
+        setProblems(problemsData);
+
+        // Check which problems are solved
+        const solvedSet = new Set();
+        for (const problem of problemsData) {
+          try {
+            const submissionsResponse = await axios.get(
+              `http://localhost:8000/contest/problems/submissions/${problem.id}/`,
+              {
+                headers: { 'Authorization': `Bearer ${token}` }
+              }
+            );
+            const hasCorrectSubmission = submissionsResponse.data.some(
+              sub => sub.evaluation_status === 'Correct'
+            );
+            if (hasCorrectSubmission) {
+              solvedSet.add(problem.id);
+            }
+          } catch (error) {
+            console.error(`Error checking submissions for problem ${problem.id}:`, error);
+          }
+        }
+        setSolvedProblems(solvedSet);
       } catch (error) {
         console.error('Error fetching contest data:', error);
         if (error.response?.status === 403) {
@@ -130,10 +157,21 @@ const ContestProblemsView = () => {
               {index > 0 && <Divider />}
               <Box sx={{ p: 2 }}>
                 <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <Box>
-                    <Typography variant="h6" gutterBottom>
-                      Problem {index + 1}: {problem.title}
-                    </Typography>
+                  <Box sx={{ flex: 1 }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 1 }}>
+                      <Typography variant="h6">
+                        Problem {index + 1}: {problem.title}
+                      </Typography>
+                      {solvedProblems.has(problem.id) && (
+                        <CheckCircleIcon 
+                          color="success" 
+                          sx={{ 
+                            fontSize: 24,
+                            verticalAlign: 'middle',
+                          }}
+                        />
+                      )}
+                    </Box>
                     <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
                       {problem.question.length > 200 
                         ? `${problem.question.substring(0, 200)}...` 
@@ -150,14 +188,15 @@ const ContestProblemsView = () => {
                       ))}
                     </Box>
                   </Box>
-                  <Button 
-                    variant="contained"
-                    color="primary"
-                    onClick={() => navigate(`/contests/${contestId}/problems/${index + 1}`)}
-                    sx={{ ml: 2 }}
-                  >
-                    Solve Problem
-                  </Button>
+                  <Box sx={{ display: 'flex', alignItems: 'center', ml: 2 }}>
+                    <Button 
+                      variant="contained"
+                      color="primary"
+                      onClick={() => navigate(`/contests/${contestId}/problems/${index + 1}`)}
+                    >
+                      {solvedProblems.has(problem.id) ? 'View Problem' : 'Solve Problem'}
+                    </Button>
+                  </Box>
                 </Box>
               </Box>
             </React.Fragment>
