@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import React, { useState, useEffect } from "react";
+import { useParams, useNavigate } from "react-router-dom";
 import {
   Container,
   Typography,
@@ -16,8 +16,8 @@ import {
   FormControlLabel,
   Radio,
   Chip,
-} from '@mui/material';
-import contestService from '../services/contestService';
+} from "@mui/material";
+import contestService from "../services/contestService";
 
 const ContestProblemView = () => {
   const { contestId, problemOrder } = useParams();
@@ -25,7 +25,7 @@ const ContestProblemView = () => {
   const [problem, setProblem] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [answer, setAnswer] = useState('');
+  const [answer, setAnswer] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState(null);
   const [submitSuccess, setSubmitSuccess] = useState(null);
@@ -35,16 +35,21 @@ const ContestProblemView = () => {
     const fetchProblem = async () => {
       try {
         setLoading(true);
-        const data = await contestService.getContestProblemByOrder(contestId, problemOrder);
+        const data = await contestService.getContestProblemByOrder(
+          contestId,
+          problemOrder
+        );
         setProblem(data);
-        
+
         // Check if user has already submitted a correct answer
         const submissions = await contestService.getProblemSubmissions(data.id);
-        const hasCorrect = submissions.some(sub => sub.evaluation_status === 'Correct');
+        const hasCorrect = submissions.some(
+          (sub) => sub.evaluation_status === "Correct"
+        );
         setHasCorrectSubmission(hasCorrect);
       } catch (error) {
-        console.error('Error fetching problem:', error);
-        setError(error.detail || 'Failed to load problem');
+        console.error("Error fetching problem:", error);
+        setError(error.detail || "Failed to load problem");
       } finally {
         setLoading(false);
       }
@@ -59,27 +64,50 @@ const ContestProblemView = () => {
       setSubmitting(true);
       setSubmitError(null);
       setSubmitSuccess(null);
-      
-      const response = await contestService.submitContestProblem(contestId, problemOrder, answer);
-      
+
+      console.log("Submitting answer:", answer);
+
+      const response = await contestService.submitContestProblem(
+        contestId,
+        problemOrder,
+        answer
+      );
+
+      // Enhanced logging
+      console.log("Submission response received:");
+      console.log(response);
+      console.table(response); // Display as table for better readability
+
+      // Log individual properties to make sure they're accessible
+      console.log("Response properties:");
+      Object.keys(response).forEach((key) => {
+        console.log(`${key}:`, response[key]);
+      });
+
       if (response.correct) {
         setSubmitSuccess({
           message: "Correct answer!",
           correct: true,
-          points: response.points_awarded
+          points: response.points_awarded,
+          remarks: response.remarks,
         });
         setHasCorrectSubmission(true);
-        setAnswer(''); // Clear the answer only if it was correct
+        setAnswer(""); // Clear the answer only if it was correct
       } else {
         setSubmitSuccess({
           message: "Wrong answer, try again!",
           correct: false,
-          points: 0
+          points: 0,
+          remarks: response.remarks,
+          score: response.score,
+          maxScore: response.max_score,
         });
       }
     } catch (error) {
-      console.error('Error submitting answer:', error);
-      setSubmitError(error.message || 'Failed to submit answer');
+      console.error("Error submitting answer:", error);
+      console.log("Error details:", error.message);
+      console.log("Full error object:", JSON.stringify(error, null, 2));
+      setSubmitError(error.message || "Failed to submit answer");
     } finally {
       setSubmitting(false);
     }
@@ -87,13 +115,13 @@ const ContestProblemView = () => {
 
   const renderAnswerInput = () => {
     // Check if the question contains "Options:" to determine if it's MCQ
-    const isMCQ = problem?.question.includes('Options:');
-    
+    const isMCQ = problem?.question.includes("Options:");
+
     if (isMCQ) {
       // Extract options from the question
-      const optionsText = problem.question.split('Options:')[1];
-      const options = optionsText.split(/\d+\./).filter(opt => opt.trim());
-      
+      const optionsText = problem.question.split("Options:")[1];
+      const options = optionsText.split(/\d+\./).filter((opt) => opt.trim());
+
       return (
         <FormControl component="fieldset">
           <RadioGroup
@@ -113,7 +141,7 @@ const ContestProblemView = () => {
         </FormControl>
       );
     }
-    
+
     return (
       <TextField
         fullWidth
@@ -130,7 +158,7 @@ const ContestProblemView = () => {
 
   if (loading) {
     return (
-      <Container sx={{ display: 'flex', justifyContent: 'center', mt: 4 }}>
+      <Container sx={{ display: "flex", justifyContent: "center", mt: 4 }}>
         <CircularProgress />
       </Container>
     );
@@ -157,7 +185,14 @@ const ContestProblemView = () => {
       <Paper elevation={3} sx={{ p: 3 }}>
         <Grid container spacing={3}>
           <Grid item xs={12}>
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+            <Box
+              sx={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                mb: 2,
+              }}
+            >
               <Typography variant="h4" component="h1">
                 Problem {problemOrder}: {problem.title}
               </Typography>
@@ -172,11 +207,11 @@ const ContestProblemView = () => {
           </Grid>
 
           <Grid item xs={12}>
-            <Typography variant="body1" sx={{ whiteSpace: 'pre-wrap' }}>
-              {problem.question.split('Options:')[0]}
+            <Typography variant="body1" sx={{ whiteSpace: "pre-wrap" }}>
+              {problem.question.split("Options:")[0]}
             </Typography>
-            {problem.question.includes('Options:') && (
-              <Typography variant="body1" sx={{ mt: 2, fontWeight: 'bold' }}>
+            {problem.question.includes("Options:") && (
+              <Typography variant="body1" sx={{ mt: 2, fontWeight: "bold" }}>
                 Options:
               </Typography>
             )}
@@ -192,7 +227,9 @@ const ContestProblemView = () => {
             </Typography>
             <form onSubmit={handleSubmit}>
               {renderAnswerInput()}
-              <Box sx={{ mt: 2, display: 'flex', justifyContent: 'space-between' }}>
+              <Box
+                sx={{ mt: 2, display: "flex", justifyContent: "space-between" }}
+              >
                 <Button
                   variant="outlined"
                   onClick={() => navigate(`/contests/${contestId}/problems`)}
@@ -203,9 +240,15 @@ const ContestProblemView = () => {
                   type="submit"
                   variant="contained"
                   color="primary"
-                  disabled={submitting || !answer.trim() || hasCorrectSubmission}
+                  disabled={
+                    submitting || !answer.trim() || hasCorrectSubmission
+                  }
                 >
-                  {submitting ? 'Submitting...' : hasCorrectSubmission ? 'Already Correct' : 'Submit'}
+                  {submitting
+                    ? "Submitting..."
+                    : hasCorrectSubmission
+                    ? "Already Correct"
+                    : "Submit"}
                 </Button>
               </Box>
             </form>
@@ -221,12 +264,29 @@ const ContestProblemView = () => {
 
           {submitSuccess && (
             <Grid item xs={12}>
-              <Alert 
+              <Alert
                 severity={submitSuccess.correct ? "success" : "error"}
                 sx={{ mt: 2 }}
               >
-                {submitSuccess.message}
-                {submitSuccess.correct && ` (+${submitSuccess.points} points)`}
+                <Typography variant="body2">
+                  {submitSuccess.message}
+                  {submitSuccess.correct &&
+                    ` (+${submitSuccess.points} points)`}
+                </Typography>
+
+                {submitSuccess.remarks && (
+                  <Typography variant="body2" sx={{ mt: 1 }}>
+                    <strong>Remarks:</strong> {submitSuccess.remarks}
+                  </Typography>
+                )}
+
+                {!submitSuccess.correct &&
+                  submitSuccess.score !== undefined && (
+                    <Typography variant="body2" sx={{ mt: 1 }}>
+                      <strong>Score:</strong> {submitSuccess.score} /{" "}
+                      {submitSuccess.maxScore || 100}
+                    </Typography>
+                  )}
               </Alert>
             </Grid>
           )}
@@ -236,4 +296,4 @@ const ContestProblemView = () => {
   );
 };
 
-export default ContestProblemView; 
+export default ContestProblemView;

@@ -114,31 +114,23 @@ const ContestListView = () => {
   };
 
   const formatDuration = (duration) => {
-    // If duration is already in HH:MM:SS format
-    if (typeof duration === "string" && duration.includes(":")) {
-      const [hours, minutes, seconds] = duration.split(":").map(Number);
-
-      if (hours === 0) {
-        if (minutes === 0) {
-          return `${seconds}s`;
-        }
-        return `${minutes}m ${seconds}s`;
-      }
-
-      return `${hours}h ${minutes}m ${seconds}s`;
+    // If duration is null or undefined, return a default value
+    if (duration === null || duration === undefined) {
+      return "0s";
     }
 
-    // Fallback for numeric duration (assumed to be in minutes)
+    // If it's already a string, just return it
+    if (typeof duration === "string") {
+      return duration;
+    }
+
+    // If it's a number, convert to string
     if (typeof duration === "number") {
-      const hours = Math.floor(duration / 60);
-      const minutes = duration % 60;
-      if (hours === 0) {
-        return `${minutes}m`;
-      }
-      return `${hours}h ${minutes}m`;
+      return `${duration}m`;
     }
 
-    return duration; // Return as-is if format is unrecognized
+    // Fallback - convert to string
+    return String(duration);
   };
 
   const getContestTypeColor = (type) => {

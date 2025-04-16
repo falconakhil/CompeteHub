@@ -43,7 +43,15 @@ def llm_evaluate(question,correct_answer, submitted_answer):
     response = chat.send_message(score_prompt)
     score = response.text
     score = int(score)
-
     print(score)
     print(remarks)
     return score,remarks
+
+if __name__=="__main__":
+    question = "What is the capital of France?"
+    correct_answer = "The capital of France is Paris."
+    submitted_answer = "Paris is the capital city of France."
+
+    score, remarks = llm_evaluate(question, correct_answer, submitted_answer)
+    print(f"Score: {score}")
+    print(f"Remarks: {remarks}")
