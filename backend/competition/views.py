@@ -589,6 +589,7 @@ class ContestProblemSubmitView(APIView):
     - 200 OK: Submission successful
     - 403 Forbidden: User not registered or contest not active
     - 404 Not Found: Problem not found
+    - 400 Bad Request: Problem already solved
     """
     permission_classes = [IsAuthenticated]
     
@@ -634,6 +635,19 @@ class ContestProblemSubmitView(APIView):
             return Response(
                 {"detail": "Problem not found."},
                 status=status.HTTP_404_NOT_FOUND
+            )
+
+        # Check if user already has a correct submission for this problem
+        existing_correct_submission = Submission.objects.filter(
+            user=request.user,
+            problem=current_problem.problem,
+            evaluation_status='Correct'
+        ).exists()
+
+        if existing_correct_submission:
+            return Response(
+                {"detail": "You have already solved this problem correctly."},
+                status=status.HTTP_400_BAD_REQUEST
             )
         
         # Compare the submitted answer with the problem's answer (case-insensitive)

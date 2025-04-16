@@ -106,7 +106,7 @@ const ContestDetailsView = () => {
       return {
         status: 'Upcoming',
         color: 'info',
-        time: `Starts in ${Math.ceil((startTime - now) / (1000 * 60 * 60))} hours`
+        time: `Starts in ${Math.ceil((startTime - now) / (1000 * 60))} minutes`
       };
     } else if (now < endTime) {
       return {

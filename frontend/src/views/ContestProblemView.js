@@ -82,7 +82,12 @@ const ContestProblemView = () => {
       }
     } catch (error) {
       console.error('Error submitting answer:', error);
-      setSubmitError(error.detail || 'Failed to submit answer');
+      if (error.response?.status === 400 && error.response?.data?.detail === "You have already solved this problem correctly.") {
+        setSubmitError("You have already solved this problem correctly.");
+        setIsSolved(true);
+      } else {
+        setSubmitError(error.detail || 'Failed to submit answer');
+      }
     } finally {
       setSubmitting(false);
     }
@@ -204,9 +209,9 @@ const ContestProblemView = () => {
                   type="submit"
                   variant="contained"
                   color="primary"
-                  disabled={submitting || !answer.trim()}
+                  disabled={submitting || !answer.trim() || isSolved}
                 >
-                  {submitting ? 'Submitting...' : 'Submit'}
+                  {submitting ? 'Submitting...' : isSolved ? 'Already Solved' : 'Submit'}
                 </Button>
               </Box>
             </form>
