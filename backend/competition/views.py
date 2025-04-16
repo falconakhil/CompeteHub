@@ -180,7 +180,7 @@ class ActiveContestsView(ListAPIView):
         # Annotate contests with their ending time (duration is in minutes)
         return Contest.objects.annotate(
             end_time=ExpressionWrapper(
-                F('starting_time') + (F('duration') * timezone.timedelta(minutes=1)), 
+                F('starting_time') + timezone.timedelta(minutes=F('duration')), 
                 output_field=DateTimeField()
             )
         ).filter(
@@ -205,7 +205,7 @@ class CompletedContestsView(ListAPIView):
         # Filter contests that have ended (end_time < now)
         queryset = Contest.objects.annotate(
             end_time=ExpressionWrapper(
-                F('starting_time') + (F('duration') * timezone.timedelta(minutes=1)), 
+                F('starting_time') + timezone.timedelta(minutes=F('duration')), 
                 output_field=DateTimeField()
             )
         ).filter(
