@@ -14,8 +14,10 @@ import {
   CircularProgress,
   Alert,
   Divider,
+  Tooltip,
 } from '@mui/material';
 import axios from 'axios';
+import contestService from '../services/contestService';
 
 const ContestProblemsView = () => {
   const { contestId } = useParams();
@@ -24,6 +26,7 @@ const ContestProblemsView = () => {
   const [contest, setContest] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [submissions, setSubmissions] = useState({});
 
   useEffect(() => {
     const fetchContestAndProblems = async () => {
@@ -55,6 +58,20 @@ const ContestProblemsView = () => {
         } else {
           setError('Invalid response format for problems');
         }
+
+        // Fetch submissions for each problem
+        const submissionsMap = {};
+        for (const problem of problemsResponse.data.results || problemsResponse.data) {
+          try {
+            const submissionsResponse = await contestService.getProblemSubmissions(problem.id);
+            if (submissionsResponse.length > 0) {
+              submissionsMap[problem.id] = submissionsResponse[0]; // Get the latest submission
+            }
+          } catch (error) {
+            console.error(`Error fetching submissions for problem ${problem.id}:`, error);
+          }
+        }
+        setSubmissions(submissionsMap);
       } catch (error) {
         console.error('Error fetching contest data:', error);
         if (error.response?.status === 403) {
@@ -81,6 +98,29 @@ const ContestProblemsView = () => {
     const hours = Math.floor(diff / (1000 * 60 * 60));
     const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
     return `${hours}h ${minutes}m remaining`;
+  };
+
+  const getSubmissionStatus = (problemId) => {
+    const submission = submissions[problemId];
+    if (!submission) return null;
+
+    return (
+      <Box sx={{ mt: 1 }}>
+        <Chip
+          label={`Score: ${submission.score}/100`}
+          color={submission.evaluation_status === 'Correct' ? 'success' : 'warning'}
+          size="small"
+          sx={{ mr: 1 }}
+        />
+        <Tooltip title={submission.remarks}>
+          <Chip
+            label={submission.evaluation_status}
+            color={submission.evaluation_status === 'Correct' ? 'success' : 'error'}
+            size="small"
+          />
+        </Tooltip>
+      </Box>
+    );
   };
 
   if (loading) {
@@ -149,6 +189,7 @@ const ContestProblemsView = () => {
                         />
                       ))}
                     </Box>
+                    {getSubmissionStatus(problem.id)}
                   </Box>
                   <Button 
                     variant="contained"
@@ -156,7 +197,7 @@ const ContestProblemsView = () => {
                     onClick={() => navigate(`/contests/${contestId}/problems/${index + 1}`)}
                     sx={{ ml: 2 }}
                   >
-                    Solve Problem
+                    {submissions[problem.id] ? 'View/Edit Submission' : 'Solve Problem'}
                   </Button>
                 </Box>
               </Box>
