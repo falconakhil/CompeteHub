@@ -55,3 +55,4 @@ coverage/
 ### Storybook ###
 storybook-static/
 
+.env
