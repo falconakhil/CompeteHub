@@ -130,7 +130,7 @@ class SubmissionCreateView(APIView):
             score=0
             remarks="Code evaluation not implemented"
         elif eval_type == 1:
-            score,remarks=llm_evaluate(problem.answer, submitted_answer)
+            score,remarks=llm_evaluate(problem.title+"\n"+problem.question,problem.answer, submitted_answer)
                 
         data['evaluation_status'] = 'Correct' if submitted_answer == correct_answer else 'Wrong'
         data['score']=score

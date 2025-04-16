@@ -8,9 +8,7 @@ GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 def llm_evaluate(question,correct_answer, submitted_answer):
     client = genai.Client(api_key=GEMINI_API_KEY)
 
-    chat=client.chat(
-        model="gemini-2.0-flash",
-    )
+    chat=client.chats.create(model="gemini-2.0-flash")
     
     system_prompt= f"""
         You are an evaluation assistant. You'll be evaluating submitted answers against correct answers for a question.
