@@ -7,7 +7,7 @@ from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.pagination import PageNumberPagination
 
-from .serializers import ContestSerializer
+from .serializers import ContestSerializer,SubmissionSerializer
 from problem.serializers import ProblemSerializer
 from problem.models import Problem
 

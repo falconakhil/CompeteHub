@@ -6,6 +6,7 @@ from rest_framework.permissions import IsAuthenticated
 from .models import Problem, ProblemGenre, Submission
 from .serializers import ProblemSerializer, SubmissionSerializer
 from rest_framework.pagination import PageNumberPagination
+from llm_evaluation import llm_evaluate
 
 
 class ProblemCreateView(APIView):
@@ -120,10 +121,21 @@ class SubmissionCreateView(APIView):
         # Compare the submitted answer with the problem's answer (case-insensitive)
         submitted_answer = data.get('content', '').strip().lower()
         correct_answer = problem.answer.strip().lower()
-        
+  
         # Set evaluation status based on comparison
+        eval_type= problem.eval_type
+        score=None
+        remarks=None
+        if eval_type == 0:
+            score=0
+            remarks="Code evaluation not implemented"
+        elif eval_type == 1:
+            score,remarks=llm_evaluate(problem.answer, submitted_answer)
+                
         data['evaluation_status'] = 'Correct' if submitted_answer == correct_answer else 'Wrong'
-        
+        data['score']=score
+        data['remarks']=remarks
+
         serializer = SubmissionSerializer(data=data)
         if serializer.is_valid():
             serializer.save(user=request.user)

@@ -5,7 +5,7 @@ import os
 load_dotenv()
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 
-def evaluate(question,correct_answer, submitted_answer):
+def llm_evaluate(question,correct_answer, submitted_answer):
     client = genai.Client(api_key=GEMINI_API_KEY)
 
     chat=client.chat(
