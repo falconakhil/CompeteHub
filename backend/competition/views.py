@@ -9,9 +9,10 @@ from rest_framework.pagination import PageNumberPagination
 
 from .serializers import ContestSerializer
 from problem.serializers import ProblemSerializer
+from problem.serializers import SubmissionSerializer
 from problem.models import Problem
 
-from .models import Contest, ContestGenre, Participation,ContestProblem
+from .models import Contest, ContestGenre, Participation,ContestProblem, Leaderboard
 
 from django.utils import timezone
 from django.db.models import F, ExpressionWrapper, DateTimeField
@@ -662,3 +663,34 @@ class ContestProblemSubmitView(APIView):
             "correct": is_correct,
             "points_awarded": current_problem.points if is_correct else 0
         })
+    
+class UserRankView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, contest_id, username):
+        try:
+            user_entry = Participation.objects.get(user__username=username, contest_id=contest_id)
+            rank = Participation.objects.filter(contest_id=contest_id, score__gt=user_entry.score).count() + 1
+            return Response({
+                "username": username,
+                "points": user_entry.score,
+                "rank": rank
+            })
+        except Participation.DoesNotExist:
+            return Response({"error": "User not found in this contest"}, status=404)
+
+class TopUsersView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, contest_id):
+        # Filter leaderboard data for the specific contest
+        top_users = Participation.objects.filter(contest_id=contest_id).order_by('-score')[:100]
+        data = [
+            {
+                "username": entry.user.username,
+                "points": entry.score,
+                "rank": index + 1
+            }
+            for index, entry in enumerate(top_users)
+        ]
+        return Response(data)

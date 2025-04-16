@@ -2,7 +2,6 @@ from django.db import models
 from django.conf import settings
 from problem.models import Problem
 
-
 class ContestGenre(models.Model):
     name = models.CharField(max_length=100, unique=True)
     
@@ -61,3 +60,10 @@ class Participation(models.Model):
     
     def __str__(self):
         return f"{self.user.username} in {self.contest.name}"
+    
+class Leaderboard(models.Model):
+    user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)  # Use AUTH_USER_MODEL
+    points = models.IntegerField(default=0)
+
+    def __str__(self):
+        return f"{self.user.username} - {self.points} points"
