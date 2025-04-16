@@ -665,6 +665,27 @@ class ContestProblemSubmitView(APIView):
         })
     
 class UserRankView(APIView):
+    """
+    API endpoint to retrieve the rank and points of a specific user in a contest.
+
+    Method: GET
+
+    URL Parameters:
+    - contest_id: ID of the contest
+    - username: Username of the participant
+
+    Returns:
+    - 200 OK: User's rank and points in the contest
+    - 404 Not Found: User not found in the contest
+
+    Example Response:
+    {
+        "username": "testuser",
+        "points": 150,
+        "rank": 2
+    }
+    """
+
     permission_classes = [IsAuthenticated]
 
     def get(self, request, contest_id, username):
@@ -680,6 +701,31 @@ class UserRankView(APIView):
             return Response({"error": "User not found in this contest"}, status=404)
 
 class TopUsersView(APIView):
+    """
+    API endpoint to retrieve the top 100 users in a contest based on their scores.
+
+    Method: GET
+
+    URL Parameters:
+    - contest_id: ID of the contest
+
+    Returns:
+    - 200 OK: List of top 100 users with their ranks and points
+
+    Example Response:
+    [
+        {
+            "username": "user1",
+            "points": 200,
+            "rank": 1
+        },
+        {
+            "username": "user2",
+            "points": 150,
+            "rank": 2
+        }
+    ]
+    """
     permission_classes = [IsAuthenticated]
 
     def get(self, request, contest_id):
