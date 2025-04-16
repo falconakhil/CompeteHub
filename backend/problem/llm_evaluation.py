@@ -44,4 +44,6 @@ def llm_evaluate(question,correct_answer, submitted_answer):
     score = response.text
     score = int(score)
 
+    print(score)
+    print(remarks)
     return score,remarks

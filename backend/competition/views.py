@@ -224,8 +224,8 @@ class CompletedContestsView(ListAPIView):
             end_time__lt=now  # Contest has ended
         ).order_by('-end_time')  # Sort by end time, most recent first
         
-        logger.info(f'Found {queryset.count()} completed contests')
-        return queryset
+        # logger.info(f'Found {queryset.count()} completed contests')
+        # return queryset
 
 class ContestRegistrationView(APIView):
     """

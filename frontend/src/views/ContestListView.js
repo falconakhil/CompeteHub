@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   Container,
   Typography,
@@ -16,15 +16,15 @@ import {
   CircularProgress,
   Paper,
   Alert,
-} from '@mui/material';
-import contestService from '../services/contestService';
+} from "@mui/material";
+import contestService from "../services/contestService";
 
 const ContestListView = () => {
   const navigate = useNavigate();
   const [contests, setContests] = useState([]);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
-  const [contestType, setContestType] = useState('active');
+  const [contestType, setContestType] = useState("active");
   const [loading, setLoading] = useState(true);
   const [registrationError, setRegistrationError] = useState(null);
 
@@ -32,25 +32,25 @@ const ContestListView = () => {
     try {
       setLoading(true);
       let response;
-      
+
       switch (contestType) {
-        case 'active':
+        case "active":
           response = await contestService.getActiveContests();
           break;
-        case 'future':
+        case "future":
           response = await contestService.getUpcomingContests();
           break;
-        case 'completed':
+        case "completed":
           response = await contestService.getPastContests();
           break;
         default:
           response = { results: [], count: 0 };
       }
-      
+
       setContests(Array.isArray(response) ? response : response.results || []);
       setTotalPages(Math.ceil((response.count || response.length || 0) / 10)); // Assuming 10 items per page
     } catch (error) {
-      console.error('Error fetching contests:', error);
+      console.error("Error fetching contests:", error);
       setContests([]);
       setTotalPages(1);
     } finally {
@@ -60,10 +60,10 @@ const ContestListView = () => {
 
   useEffect(() => {
     fetchContests();
-    
+
     // Set up interval to refresh contests when active tab is selected
     let intervalId;
-    if (contestType === 'active') {
+    if (contestType === "active") {
       intervalId = setInterval(() => {
         fetchContests();
       }, 60000);
@@ -97,8 +97,10 @@ const ContestListView = () => {
       // Refresh the contests list after registration
       await fetchContests();
     } catch (error) {
-      console.error('Error registering for contest:', error);
-      setRegistrationError(error.detail || 'Failed to register for the contest');
+      console.error("Error registering for contest:", error);
+      setRegistrationError(
+        error.detail || "Failed to register for the contest"
+      );
     }
   };
 
@@ -107,42 +109,65 @@ const ContestListView = () => {
       await contestService.deleteContest(contestId);
       fetchContests(); // Refresh the list
     } catch (error) {
-      console.error('Error deleting contest:', error);
+      console.error("Error deleting contest:", error);
     }
   };
 
   const formatDuration = (duration) => {
-    const hours = Math.floor(duration / 60);
-    const minutes = duration % 60;
-    if (hours === 0) {
-      return `${minutes}m`;
+    // If duration is already in HH:MM:SS format
+    if (typeof duration === "string" && duration.includes(":")) {
+      const [hours, minutes, seconds] = duration.split(":").map(Number);
+
+      if (hours === 0) {
+        if (minutes === 0) {
+          return `${seconds}s`;
+        }
+        return `${minutes}m ${seconds}s`;
+      }
+
+      return `${hours}h ${minutes}m ${seconds}s`;
     }
-    return `${hours}h ${minutes}m`;
+
+    // Fallback for numeric duration (assumed to be in minutes)
+    if (typeof duration === "number") {
+      const hours = Math.floor(duration / 60);
+      const minutes = duration % 60;
+      if (hours === 0) {
+        return `${minutes}m`;
+      }
+      return `${hours}h ${minutes}m`;
+    }
+
+    return duration; // Return as-is if format is unrecognized
   };
 
   const getContestTypeColor = (type) => {
     switch (type) {
-      case 'active':
-        return 'success';
-      case 'future':
-        return 'primary';
-      case 'completed':
-        return 'default';
+      case "active":
+        return "success";
+      case "future":
+        return "primary";
+      case "completed":
+        return "default";
       default:
-        return 'default';
+        return "default";
     }
   };
 
   return (
     <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+      <Box
+        sx={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          mb: 3,
+        }}
+      >
         <Typography variant="h4" component="h1">
           Contests
         </Typography>
-        <Button
-          variant="outlined"
-          onClick={() => navigate('/dashboard')}
-        >
+        <Button variant="outlined" onClick={() => navigate("/dashboard")}>
           Back to Dashboard
         </Button>
       </Box>
@@ -162,7 +187,7 @@ const ContestListView = () => {
       )}
 
       {loading ? (
-        <Box sx={{ display: 'flex', justifyContent: 'center' }}>
+        <Box sx={{ display: "flex", justifyContent: "center" }}>
           <CircularProgress />
         </Box>
       ) : (
@@ -176,14 +201,18 @@ const ContestListView = () => {
                       {contest.name}
                     </Typography>
                     <Typography color="text.secondary" gutterBottom>
-                      Starts: {new Date(contest.starting_time).toLocaleString(undefined, {
-                        year: 'numeric',
-                        month: 'short',
-                        day: 'numeric',
-                        hour: '2-digit',
-                        minute: '2-digit',
-                        second: '2-digit'
-                      })}
+                      Starts:{" "}
+                      {new Date(contest.starting_time).toLocaleString(
+                        undefined,
+                        {
+                          year: "numeric",
+                          month: "short",
+                          day: "numeric",
+                          hour: "2-digit",
+                          minute: "2-digit",
+                          second: "2-digit",
+                        }
+                      )}
                     </Typography>
                     <Typography variant="body2">
                       {contest.description}
@@ -200,37 +229,35 @@ const ContestListView = () => {
                     </Box>
                   </CardContent>
                   <CardActions>
-                    <Button 
-                      size="small" 
+                    <Button
+                      size="small"
                       color="primary"
                       onClick={() => handleViewDetails(contest.id)}
                     >
                       View Details
                     </Button>
-                    {contestType === 'future' && !contest.is_registered && (
-                      <Button 
-                        size="small" 
+                    {contestType === "future" && !contest.is_registered && (
+                      <Button
+                        size="small"
                         color="primary"
                         onClick={() => handleRegister(contest.id)}
                       >
                         Register
                       </Button>
                     )}
-                    {contestType === 'active' && contest.is_registered && (
-                      <Button 
-                        size="small" 
+                    {contestType === "active" && contest.is_registered && (
+                      <Button
+                        size="small"
                         color="primary"
-                        onClick={() => navigate(`/contests/${contest.id}/problems`)}
+                        onClick={() =>
+                          navigate(`/contests/${contest.id}/problems`)
+                        }
                       >
                         Enter Contest
                       </Button>
                     )}
-                    {contest.is_registered && contestType === 'future' && (
-                      <Chip 
-                        label="Registered" 
-                        color="success" 
-                        size="small" 
-                      />
+                    {contest.is_registered && contestType === "future" && (
+                      <Chip label="Registered" color="success" size="small" />
                     )}
                   </CardActions>
                 </Card>
@@ -238,7 +265,7 @@ const ContestListView = () => {
             ))}
             {contests.length === 0 && (
               <Grid item xs={12}>
-                <Paper elevation={1} sx={{ p: 3, textAlign: 'center' }}>
+                <Paper elevation={1} sx={{ p: 3, textAlign: "center" }}>
                   <Typography color="textSecondary">
                     No {contestType} contests found
                   </Typography>
@@ -248,10 +275,10 @@ const ContestListView = () => {
           </Grid>
 
           {totalPages > 1 && (
-            <Box sx={{ display: 'flex', justifyContent: 'center', mt: 4 }}>
-              <Pagination 
-                count={totalPages} 
-                page={page} 
+            <Box sx={{ display: "flex", justifyContent: "center", mt: 4 }}>
+              <Pagination
+                count={totalPages}
+                page={page}
                 onChange={handlePageChange}
                 color="primary"
               />
@@ -263,4 +290,4 @@ const ContestListView = () => {
   );
 };
 
-export default ContestListView; 
+export default ContestListView;

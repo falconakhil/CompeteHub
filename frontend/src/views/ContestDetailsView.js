@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import React, { useState, useEffect } from "react";
+import { useParams, useNavigate } from "react-router-dom";
 import {
   Container,
   Typography,
@@ -14,8 +14,8 @@ import {
   ListItem,
   ListItemText,
   Alert,
-} from '@mui/material';
-import contestService from '../services/contestService';
+} from "@mui/material";
+import contestService from "../services/contestService";
 
 const ContestDetailsView = () => {
   const { contestId } = useParams();
@@ -37,15 +37,15 @@ const ContestDetailsView = () => {
         setContest(data);
         setIsRegistered(data.is_registered);
       } catch (error) {
-        console.error('Error fetching contest details:', error);
-        setError(error.detail || 'Failed to load contest');
+        console.error("Error fetching contest details:", error);
+        setError(error.detail || "Failed to load contest");
       } finally {
         setLoading(false);
       }
     };
 
     fetchContestDetails();
-    
+
     // Set up interval to check contest status every minute
     const intervalId = setInterval(() => {
       fetchContestDetails();
@@ -64,8 +64,10 @@ const ContestDetailsView = () => {
       setContest(updatedData);
       setIsRegistered(true);
     } catch (error) {
-      console.error('Error registering for contest:', error);
-      setRegistrationError(error.detail || 'Failed to register for the contest');
+      console.error("Error registering for contest:", error);
+      setRegistrationError(
+        error.detail || "Failed to register for the contest"
+      );
     }
   };
 
@@ -78,8 +80,10 @@ const ContestDetailsView = () => {
       setContest(updatedData);
       setIsRegistered(false);
     } catch (error) {
-      console.error('Error unregistering from contest:', error);
-      setRegistrationError(error.detail || 'Failed to unregister from the contest');
+      console.error("Error unregistering from contest:", error);
+      setRegistrationError(
+        error.detail || "Failed to unregister from the contest"
+      );
     }
   };
 
@@ -90,50 +94,92 @@ const ContestDetailsView = () => {
       setProblems(data.results || data);
       setShowProblems(true);
     } catch (error) {
-      console.error('Error fetching contest problems:', error);
+      console.error("Error fetching contest problems:", error);
     } finally {
       setProblemsLoading(false);
     }
   };
 
   const formatDuration = (duration) => {
-    // Convert duration from seconds to hours and minutes
-    const totalSeconds = duration;
-    const hours = Math.floor(totalSeconds / 3600);
-    const minutes = Math.floor((totalSeconds % 3600) / 60);
-    return `${hours}h ${minutes}m`;
+    // Handle HH:MM:SS format string
+    if (typeof duration === "string" && duration.includes(":")) {
+      const [hours, minutes, seconds] = duration.split(":").map(Number);
+
+      if (hours === 0) {
+        if (minutes === 0) {
+          return `${seconds}s`;
+        }
+        return `${minutes}m ${seconds}s`;
+      }
+
+      return `${hours}h ${minutes}m ${seconds}s`;
+    }
+
+    // Fallback for numeric duration (seconds)
+    if (typeof duration === "number") {
+      const hours = Math.floor(duration / 3600);
+      const minutes = Math.floor((duration % 3600) / 60);
+      const seconds = duration % 60;
+
+      if (hours === 0) {
+        if (minutes === 0) {
+          return `${seconds}s`;
+        }
+        return `${minutes}m ${seconds}s`;
+      }
+
+      return `${hours}h ${minutes}m ${seconds}s`;
+    }
+
+    return duration; // Return as-is if format is unrecognized
   };
 
   const getContestStatus = () => {
     if (!contest) return null;
     const now = new Date();
     const startTime = new Date(contest.starting_time);
-    const endTime = new Date(startTime.getTime() + contest.duration * 1000);
+
+    // Calculate end time based on the duration format
+    let endTime;
+    if (
+      typeof contest.duration === "string" &&
+      contest.duration.includes(":")
+    ) {
+      // Parse HH:MM:SS format
+      const [hours, minutes, seconds] = contest.duration.split(":").map(Number);
+      const durationMs = (hours * 3600 + minutes * 60 + seconds) * 1000;
+      endTime = new Date(startTime.getTime() + durationMs);
+    } else {
+      // Fallback for numeric seconds
+      endTime = new Date(startTime.getTime() + contest.duration * 1000);
+    }
 
     if (now < startTime) {
       return {
-        status: 'Upcoming',
-        color: 'info',
-        time: `Starts in ${Math.ceil((startTime - now) / (1000 * 60 * 60))} hours`
+        status: "Upcoming",
+        color: "info",
+        time: `Starts in ${Math.ceil(
+          (startTime - now) / (1000 * 60 * 60)
+        )} hours`,
       };
     } else if (now < endTime) {
       return {
-        status: 'Active',
-        color: 'success',
-        time: `Ends in ${Math.ceil((endTime - now) / (1000 * 60))} minutes`
+        status: "Active",
+        color: "success",
+        time: `Ends in ${Math.ceil((endTime - now) / (1000 * 60))} minutes`,
       };
     } else {
       return {
-        status: 'Completed',
-        color: 'default',
-        time: 'Contest has ended'
+        status: "Completed",
+        color: "default",
+        time: "Contest has ended",
       };
     }
   };
 
   if (loading) {
     return (
-      <Container sx={{ display: 'flex', justifyContent: 'center', mt: 4 }}>
+      <Container sx={{ display: "flex", justifyContent: "center", mt: 4 }}>
         <CircularProgress />
       </Container>
     );
@@ -162,7 +208,13 @@ const ContestDetailsView = () => {
       <Paper elevation={3} sx={{ p: 3 }}>
         <Grid container spacing={3}>
           <Grid item xs={12}>
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+            <Box
+              sx={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "flex-start",
+              }}
+            >
               <Box>
                 <Typography variant="h4" component="h1" gutterBottom>
                   {contest.name}
@@ -172,13 +224,17 @@ const ContestDetailsView = () => {
                   color={status.color}
                   sx={{ mr: 1 }}
                 />
-                <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+                <Typography
+                  variant="body2"
+                  color="text.secondary"
+                  sx={{ mt: 1 }}
+                >
                   {status.time}
                 </Typography>
               </Box>
               <Box>
-                {status.status === 'Upcoming' && (
-                  isRegistered ? (
+                {status.status === "Upcoming" &&
+                  (isRegistered ? (
                     <Button
                       variant="outlined"
                       color="error"
@@ -194,9 +250,8 @@ const ContestDetailsView = () => {
                     >
                       Register
                     </Button>
-                  )
-                )}
-                {status.status === 'Active' && isRegistered && (
+                  ))}
+                {status.status === "Active" && isRegistered && (
                   <Button
                     variant="contained"
                     color="primary"
@@ -235,13 +290,9 @@ const ContestDetailsView = () => {
           </Grid>
 
           <Grid item xs={12}>
-            <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+            <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
               {contest.genres?.map((genre) => (
-                <Chip
-                  key={genre.id}
-                  label={genre.name}
-                  variant="outlined"
-                />
+                <Chip key={genre.id} label={genre.name} variant="outlined" />
               ))}
             </Box>
           </Grid>
@@ -252,16 +303,18 @@ const ContestDetailsView = () => {
             </Typography>
             {showProblems ? (
               problemsLoading ? (
-                <Box sx={{ display: 'flex', justifyContent: 'center', my: 2 }}>
+                <Box sx={{ display: "flex", justifyContent: "center", my: 2 }}>
                   <CircularProgress />
                 </Box>
               ) : problems.length > 0 ? (
                 <List>
                   {problems.map((problem) => (
-                    <ListItem key={problem.id} button onClick={() => navigate(`/problems/${problem.id}`)}>
-                      <ListItemText
-                        primary={problem.title}
-                      />
+                    <ListItem
+                      key={problem.id}
+                      button
+                      onClick={() => navigate(`/problems/${problem.id}`)}
+                    >
+                      <ListItemText primary={problem.title} />
                     </ListItem>
                   ))}
                 </List>
@@ -284,4 +337,4 @@ const ContestDetailsView = () => {
   );
 };
 
-export default ContestDetailsView; 
+export default ContestDetailsView;
