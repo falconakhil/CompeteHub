@@ -71,23 +71,16 @@ const ContestProblemView = () => {
         answer
       );
 
+      setSubmitSuccess({
+        message: response.correct ? "Correct answer!" : "Wrong answer, try again!",
+        correct: response.correct,
+        points: response.points_awarded,
+        remarks: response.remarks,
+        score: response.score
+      });
+
       if (response.correct) {
-        setSubmitSuccess({
-          message: "Correct answer!",
-          correct: true,
-          points: response.points_awarded,
-          remarks: response.remarks,
-          score: response.score
-        });
         setAnswer(""); // Clear the answer only if it was correct
-      } else {
-        setSubmitSuccess({
-          message: "Wrong answer, try again!",
-          correct: false,
-          points: 0,
-          remarks: response.remarks,
-          score: response.score
-        });
       }
     } catch (error) {
       console.error("Error submitting answer:", error);
@@ -236,7 +229,9 @@ const ContestProblemView = () => {
                 severity={submitSuccess.correct ? "success" : "error"}
                 sx={{ mb: 2 }}
               >
-                {submitSuccess.message}
+                <Typography variant="body1" sx={{ fontWeight: 'bold' }}>
+                  {submitSuccess.message}
+                </Typography>
                 {submitSuccess.points > 0 && (
                   <Typography variant="body2" sx={{ mt: 1 }}>
                     Points awarded: {submitSuccess.points}
@@ -244,16 +239,29 @@ const ContestProblemView = () => {
                 )}
               </Alert>
               
-              <Paper elevation={2} sx={{ p: 2, mt: 2 }}>
-                <Typography variant="subtitle1" gutterBottom>
-                  Evaluation Details
-                </Typography>
-                <Typography variant="body2" color="text.secondary" gutterBottom>
-                  Score: {submitSuccess.score}/100
-                </Typography>
-                <Typography variant="body2" sx={{ mt: 1 }}>
-                  {submitSuccess.remarks}
-                </Typography>
+              <Paper elevation={2} sx={{ p: 3, mt: 2, bgcolor: 'background.paper' }}>
+                <Box sx={{ mb: 2 }}>
+                  <Typography variant="h6" gutterBottom>
+                    Evaluation Details
+                  </Typography>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <Typography variant="body1" color="text.secondary">
+                      Score:
+                    </Typography>
+                    <Typography variant="body1" sx={{ fontWeight: 'bold' }}>
+                      {submitSuccess.score}/100
+                    </Typography>
+                  </Box>
+                </Box>
+                
+                <Box sx={{ mt: 2 }}>
+                  <Typography variant="subtitle2" color="text.secondary" gutterBottom>
+                    Feedback:
+                  </Typography>
+                  <Typography variant="body1" sx={{ whiteSpace: 'pre-wrap' }}>
+                    {submitSuccess.remarks}
+                  </Typography>
+                </Box>
               </Paper>
             </Grid>
           )}
