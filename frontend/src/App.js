@@ -16,6 +16,7 @@ import ContestProblemView from './views/ContestProblemView';
 import ContestProblemsView from './views/ContestProblemsView';
 import ProblemSetView from './views/ProblemSetView';
 import ProblemDetailView from './views/ProblemDetailView';
+import LeaderboardView from './views/LeaderboardView';
 
 const theme = createTheme({
   palette: {
@@ -105,6 +106,7 @@ function App() {
               <Route path="/contests/:contestId" element={<ContestDetailsView />} />
               <Route path="/contests/:contestId/problems" element={<ContestProblemsView />} />
               <Route path="/contests/:contestId/problems/:problemOrder" element={<ContestProblemView />} />
+              <Route path="/contests/:contestId/leaderboard" element={<LeaderboardView />} />
             </Routes>
           </Box>
         </Box>

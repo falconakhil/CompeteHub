@@ -112,6 +112,40 @@ export const createContest = async (contestData) => {
   }
 };
 
+export const getContestLeaderboard = async (contestId) => {
+  try {
+    const response = await axios.get(`${API_URL}leaderboard/${contestId}/top/`, {
+      headers: getAuthHeader()
+    });
+    return response.data;
+  } catch (error) {
+    throw error.response?.data || { detail: 'An error occurred while fetching leaderboard' };
+  }
+};
+
+export const getUserRank = async (contestId, username) => {
+  try {
+    const response = await axios.get(`${API_URL}leaderboard/${contestId}/user/${username}/`, {
+      headers: getAuthHeader()
+    });
+    return response.data;
+  } catch (error) {
+    throw error.response?.data || { detail: 'An error occurred while fetching user rank' };
+  }
+};
+
+export const getProblemSubmissions = async (contestId, order) => {
+  try {
+    const response = await axios.get(
+      `${API_URL}${contestId}/problems/${order}/submissions/`,
+      { headers: getAuthHeader() }
+    );
+    return response.data;
+  } catch (error) {
+    throw error.response?.data || new Error('An error occurred while fetching problem submissions');
+  }
+};
+
 const contestService = {
   getContestDetails,
   getActiveContests,
@@ -122,6 +156,9 @@ const contestService = {
   getContestProblemByOrder,
   submitContestProblem,
   createContest,
+  getContestLeaderboard,
+  getUserRank,
+  getProblemSubmissions,
 };
 
 export default contestService; 

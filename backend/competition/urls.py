@@ -14,7 +14,8 @@ from .views import (
     ContestProblemByOrderView,
     ContestProblemSubmitView,
     UserRankView,
-    TopUsersView
+    TopUsersView,
+    ContestProblemSubmissionsView
 )
 
 urlpatterns = [
@@ -31,6 +32,7 @@ urlpatterns = [
     path('problems/remove/<int:contest_id>/<int:problem_id>/',RemoveProblemFromContestView.as_view(), name='remove-problems'),
     path('<int:contest_id>/problems/<int:order>/', ContestProblemByOrderView.as_view(), name='contest-problem-by-order'),
     path('<int:contest_id>/problems/<int:order>/submit/', ContestProblemSubmitView.as_view(), name='contest-problem-submit'),
+    path('<int:contest_id>/problems/<int:order>/submissions/', ContestProblemSubmissionsView.as_view(), name='contest-problem-submissions'),
 
     path('register/<int:pk>/', ContestRegistrationView.as_view(), name='register-contest'),
     path('unregister/<int:pk>/', ContestUnregisterView.as_view(), name='unregister-contest'),

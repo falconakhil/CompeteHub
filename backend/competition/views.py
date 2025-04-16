@@ -10,7 +10,7 @@ from rest_framework.pagination import PageNumberPagination
 from .serializers import ContestSerializer
 from problem.serializers import ProblemSerializer
 from problem.serializers import SubmissionSerializer
-from problem.models import Problem
+from problem.models import Problem, Submission
 
 from .models import Contest, ContestGenre, Participation,ContestProblem, Leaderboard
 
@@ -740,3 +740,58 @@ class TopUsersView(APIView):
             for index, entry in enumerate(top_users)
         ]
         return Response(data)
+
+class ContestProblemSubmissionsView(APIView):
+    """
+    API endpoint for getting all submissions for a specific problem in a contest
+    
+    Method: GET
+    
+    URL Parameters:
+    - contest_id: Contest ID
+    - order: Problem order number (1-based)
+    
+    Returns:
+    - 200 OK: List of submissions
+    - 403 Forbidden: User not registered
+    - 404 Not Found: Problem not found
+    """
+    permission_classes = [IsAuthenticated]
+    
+    def get(self, request, contest_id, order):
+        # Get the contest or return 404 if not found
+        contest = get_object_or_404(Contest, pk=contest_id)
+        
+        # Check if user is registered
+        participation = Participation.objects.filter(user=request.user, contest=contest).first()
+        if not participation:
+            return Response(
+                {"detail": "You must be registered for this contest to view submissions."},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        
+        # Get all problems to determine the current problem's order
+        contest_problems = ContestProblem.objects.filter(contest=contest).order_by('order')
+        problem_list = list(contest_problems)
+        current_problem = None
+        
+        # Find the problem with the specified order
+        for i, cp in enumerate(problem_list, 1):
+            if i == order:
+                current_problem = cp
+                break
+        
+        if not current_problem:
+            return Response(
+                {"detail": "Problem not found."},
+                status=status.HTTP_404_NOT_FOUND
+            )
+        
+        # Get all submissions for this problem by the current user
+        submissions = Submission.objects.filter(
+            user=request.user,
+            problem=current_problem.problem
+        ).order_by('-created_at')
+        
+        serializer = SubmissionSerializer(submissions, many=True)
+        return Response(serializer.data)

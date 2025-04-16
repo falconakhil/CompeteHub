@@ -270,6 +270,28 @@ const ContestDetailsView = () => {
               </Button>
             )}
           </Grid>
+
+          <Grid item xs={12}>
+            <Box sx={{ display: 'flex', gap: 2, mb: 2 }}>
+              {!isRegistered ? (
+                <Button
+                  variant="contained"
+                  color="primary"
+                  onClick={handleRegister}
+                >
+                  Register
+                </Button>
+              ) : (
+                <Button
+                  variant="contained"
+                  color="secondary"
+                  onClick={handleUnregister}
+                >
+                  Unregister
+                </Button>
+              )}
+            </Box>
+          </Grid>
         </Grid>
       </Paper>
     </Container>

@@ -172,11 +172,17 @@ const ContestProblemsView = () => {
           </Box>
         )}
 
-        <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 3 }}>
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 3 }}>
+          <Button
+            variant="contained"
+            color="primary"
+            onClick={() => navigate(`/contests/${contestId}/leaderboard`)}
+          >
+            View Leaderboard
+          </Button>
           <Button
             variant="outlined"
             onClick={() => navigate('/dashboard')}
-            sx={{ mr: 2 }}
           >
             Back to Dashboard
           </Button>

@@ -16,6 +16,7 @@ import {
   FormControlLabel,
   Radio,
 } from '@mui/material';
+import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import contestService from '../services/contestService';
 
 const ContestProblemView = () => {
@@ -28,6 +29,7 @@ const ContestProblemView = () => {
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState(null);
   const [submitSuccess, setSubmitSuccess] = useState(null);
+  const [isSolved, setIsSolved] = useState(false);
 
   useEffect(() => {
     const fetchProblem = async () => {
@@ -35,6 +37,10 @@ const ContestProblemView = () => {
         setLoading(true);
         const data = await contestService.getContestProblemByOrder(contestId, problemOrder);
         setProblem(data);
+        // Check if the problem is already solved
+        const submissions = await contestService.getProblemSubmissions(contestId, problemOrder);
+        const hasCorrectSubmission = submissions.some(sub => sub.evaluation_status === 'Correct');
+        setIsSolved(hasCorrectSubmission);
       } catch (error) {
         console.error('Error fetching problem:', error);
         setError(error.detail || 'Failed to load problem');
@@ -61,6 +67,7 @@ const ContestProblemView = () => {
           correct: true,
           points: response.points_awarded
         });
+        setIsSolved(true);
       } else {
         setSubmitSuccess({
           message: "Wrong answer, try again!",
@@ -154,9 +161,14 @@ const ContestProblemView = () => {
         <Grid container spacing={3}>
           <Grid item xs={12}>
             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-              <Typography variant="h4" component="h1">
-                Problem {problemOrder}: {problem.title}
-              </Typography>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                <Typography variant="h4" component="h1">
+                  Problem {problemOrder}: {problem.title}
+                </Typography>
+                {isSolved && (
+                  <CheckCircleIcon color="success" sx={{ fontSize: 32 }} />
+                )}
+              </Box>
             </Box>
           </Grid>
 
