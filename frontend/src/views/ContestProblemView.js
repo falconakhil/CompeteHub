@@ -15,6 +15,7 @@ import {
   RadioGroup,
   FormControlLabel,
   Radio,
+  Chip,
 } from '@mui/material';
 import contestService from '../services/contestService';
 
@@ -28,6 +29,7 @@ const ContestProblemView = () => {
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState(null);
   const [submitSuccess, setSubmitSuccess] = useState(null);
+  const [hasCorrectSubmission, setHasCorrectSubmission] = useState(false);
 
   useEffect(() => {
     const fetchProblem = async () => {
@@ -35,6 +37,11 @@ const ContestProblemView = () => {
         setLoading(true);
         const data = await contestService.getContestProblemByOrder(contestId, problemOrder);
         setProblem(data);
+        
+        // Check if user has already submitted a correct answer
+        const submissions = await contestService.getProblemSubmissions(data.id);
+        const hasCorrect = submissions.some(sub => sub.evaluation_status === 'Correct');
+        setHasCorrectSubmission(hasCorrect);
       } catch (error) {
         console.error('Error fetching problem:', error);
         setError(error.detail || 'Failed to load problem');
@@ -61,6 +68,8 @@ const ContestProblemView = () => {
           correct: true,
           points: response.points_awarded
         });
+        setHasCorrectSubmission(true);
+        setAnswer(''); // Clear the answer only if it was correct
       } else {
         setSubmitSuccess({
           message: "Wrong answer, try again!",
@@ -68,14 +77,9 @@ const ContestProblemView = () => {
           points: 0
         });
       }
-      
-      // Don't clear the answer if it was wrong
-      if (response.correct) {
-        setAnswer('');
-      }
     } catch (error) {
       console.error('Error submitting answer:', error);
-      setSubmitError(error.detail || 'Failed to submit answer');
+      setSubmitError(error.message || 'Failed to submit answer');
     } finally {
       setSubmitting(false);
     }
@@ -157,6 +161,13 @@ const ContestProblemView = () => {
               <Typography variant="h4" component="h1">
                 Problem {problemOrder}: {problem.title}
               </Typography>
+              {hasCorrectSubmission && (
+                <Chip
+                  label="Correct Answer Submitted"
+                  color="success"
+                  variant="outlined"
+                />
+              )}
             </Box>
           </Grid>
 
@@ -192,9 +203,9 @@ const ContestProblemView = () => {
                   type="submit"
                   variant="contained"
                   color="primary"
-                  disabled={submitting || !answer.trim()}
+                  disabled={submitting || !answer.trim() || hasCorrectSubmission}
                 >
-                  {submitting ? 'Submitting...' : 'Submit'}
+                  {submitting ? 'Submitting...' : hasCorrectSubmission ? 'Already Correct' : 'Submit'}
                 </Button>
               </Box>
             </form>

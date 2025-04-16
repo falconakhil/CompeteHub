@@ -31,6 +31,7 @@ const CreateProblem = () => {
     type: 'descriptive',
     options: [''],
     tags: [],
+    eval_type: 1,
   });
   const [newTag, setNewTag] = useState('');
 
@@ -79,6 +80,7 @@ const CreateProblem = () => {
           : problemData.question,
         answer: problemData.answer,
         genre_names: problemData.tags,
+        eval_type: problemData.eval_type,
       };
 
       const response = await fetch('http://localhost:8000/problem/create/', {
@@ -136,6 +138,18 @@ const CreateProblem = () => {
             >
               <FormControlLabel value="mcq" control={<Radio />} label="Multiple Choice" />
               <FormControlLabel value="descriptive" control={<Radio />} label="Descriptive" />
+            </RadioGroup>
+          </FormControl>
+
+          <FormControl component="fieldset" margin="normal">
+            <Typography variant="subtitle1">Evaluation Type</Typography>
+            <RadioGroup
+              value={problemData.eval_type}
+              onChange={(e) => setProblemData({ ...problemData, eval_type: parseInt(e.target.value) })}
+            >
+              <FormControlLabel value="0" control={<Radio />} label="Code Evaluation" />
+              <FormControlLabel value="1" control={<Radio />} label="Text Evaluation" />
+              <FormControlLabel value="2" control={<Radio />} label="No Auto Evaluation" />
             </RadioGroup>
           </FormControl>
 

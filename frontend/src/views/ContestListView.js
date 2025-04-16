@@ -60,6 +60,21 @@ const ContestListView = () => {
 
   useEffect(() => {
     fetchContests();
+    
+    // Set up interval to refresh contests when active tab is selected
+    let intervalId;
+    if (contestType === 'active') {
+      intervalId = setInterval(() => {
+        fetchContests();
+      }, 60000);
+    }
+
+    // Cleanup interval on component unmount or tab change
+    return () => {
+      if (intervalId) {
+        clearInterval(intervalId);
+      }
+    };
   }, [page, contestType]);
 
   const handlePageChange = (event, value) => {

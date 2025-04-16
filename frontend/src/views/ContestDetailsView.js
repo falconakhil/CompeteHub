@@ -45,6 +45,14 @@ const ContestDetailsView = () => {
     };
 
     fetchContestDetails();
+    
+    // Set up interval to check contest status every minute
+    const intervalId = setInterval(() => {
+      fetchContestDetails();
+    }, 60000);
+
+    // Cleanup interval on component unmount
+    return () => clearInterval(intervalId);
   }, [contestId]);
 
   const handleRegister = async () => {
@@ -222,7 +230,7 @@ const ContestDetailsView = () => {
               Created by: {contest.creator_username}
             </Typography>
             <Typography variant="body2" color="text.secondary">
-              Duration: {Math.floor(contest.duration / 60)}h {contest.duration % 60}m
+              Duration: {formatDuration(contest.duration)}
             </Typography>
           </Grid>
 

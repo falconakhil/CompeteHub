@@ -28,6 +28,14 @@ const Dashboard = () => {
 
   useEffect(() => {
     fetchContests();
+    
+    // Set up interval to refresh active contests every minute
+    const intervalId = setInterval(() => {
+      fetchContests();
+    }, 60000);
+
+    // Cleanup interval on component unmount
+    return () => clearInterval(intervalId);
   }, [location.state?.refresh]);
 
   const fetchContests = async () => {

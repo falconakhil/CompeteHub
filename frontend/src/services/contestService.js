@@ -106,7 +106,7 @@ export const submitContestProblem = async (contestId, order, answer) => {
     if (error.response?.status === 403) {
       throw new Error('You must be registered for this contest to submit answers.');
     }
-    throw error.response?.data || new Error('An error occurred while submitting the answer');
+    throw new Error(error.response?.data?.detail || 'An error occurred while submitting the answer');
   }
 };
 
@@ -123,6 +123,17 @@ export const createContest = async (contestData) => {
   }
 };
 
+export const getProblemSubmissions = async (problemId) => {
+  try {
+    const response = await axios.get(`${API_URL}problems/submissions/${problemId}/`, {
+      headers: getAuthHeader()
+    });
+    return response.data;
+  } catch (error) {
+    throw error.response?.data || { detail: 'An error occurred while fetching problem submissions' };
+  }
+};
+
 const contestService = {
   getContestDetails,
   getActiveContests,
@@ -134,6 +145,7 @@ const contestService = {
   getContestProblemByOrder,
   submitContestProblem,
   createContest,
+  getProblemSubmissions,
 };
 
 export default contestService; 
