@@ -124,8 +124,8 @@ class SubmissionCreateView(APIView):
   
         # Set evaluation status based on comparison
         eval_type= problem.eval_type
-        score=None
-        remarks=None
+        score=0
+        remarks=1
         if eval_type == 0:
             score=0
             remarks="Code evaluation not implemented"

@@ -1,5 +1,6 @@
 from django.db import models
 from django.conf import settings
+from datetime import timedelta
 from problem.models import Problem
 
 
@@ -13,7 +14,7 @@ class ContestGenre(models.Model):
 class Contest(models.Model):
     name = models.CharField(max_length=100)
     starting_time = models.DateTimeField()
-    duration = models.IntegerField(help_text="Duration in minutes")
+    duration = models.DurationField(default=timedelta(hours=1))
     genres = models.ManyToManyField(ContestGenre, related_name='contests')
     description = models.TextField()
     creator = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='created_contests')

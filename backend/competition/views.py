@@ -11,10 +11,11 @@ from .serializers import ContestSerializer
 from problem.serializers import ProblemSerializer, SubmissionSerializer
 from problem.models import Problem
 
-from .models import Contest, ContestGenre, Participation,ContestProblem
+from .models import Contest, ContestGenre, Participation, ContestProblem
 
 from django.utils import timezone
 from django.db.models import F, ExpressionWrapper, DateTimeField
+from datetime import timedelta
 
 class ContestCreateView(APIView):
     """
@@ -27,7 +28,7 @@ class ContestCreateView(APIView):
         "name": "Spring Coding Challenge 2025",
         "description": "A competitive programming contest...",
         "starting_time": "2025-04-15T09:00:00Z",
-        "duration": 60,  # Duration in minutes
+        "duration": "01:00:00",  # Duration in HH:MM:SS format
         "genre_names": ["Algorithms", "Data Structures"]
     }
     
@@ -75,18 +76,31 @@ class ContestCreateView(APIView):
                 
                 data['genre_ids'] = genres
             
-            # Validate duration is a positive integer
+            # Validate duration is a positive value
             if 'duration' in data:
                 try:
-                    duration_minutes = int(data['duration'])
-                    if duration_minutes <= 0:
+                    # Parse the duration string (expected format: "HH:MM:SS")
+                    duration_str = data['duration']
+                    if not isinstance(duration_str, str) or not duration_str:
                         return Response(
-                            {"detail": "Duration must be positive"},
+                            {"detail": "Duration must be a string in the format 'HH:MM:SS'"},
                             status=status.HTTP_400_BAD_REQUEST
                         )
+                    
+                    # Try to parse the duration to validate it
+                    from datetime import datetime
+                    try:
+                        # Parse as time to validate format
+                        datetime.strptime(duration_str, "%H:%M:%S")
+                    except ValueError:
+                        return Response(
+                            {"detail": "Duration must be in the format 'HH:MM:SS'"},
+                            status=status.HTTP_400_BAD_REQUEST
+                        )
+                    
                 except (ValueError, TypeError):
                     return Response(
-                        {"detail": "Duration must be a valid number of minutes"},
+                        {"detail": "Duration must be a valid time string in the format 'HH:MM:SS'"},
                         status=status.HTTP_400_BAD_REQUEST
                     )
             
@@ -161,7 +175,6 @@ class FutureContestsView(ListAPIView):
             starting_time__gt=now  # Contest has not started yet
         ).order_by('-starting_time')  # Sort by starting time in decreasing order
 
-
 class ActiveContestsView(ListAPIView):
     """
     API endpoint for retrieving active contests
@@ -174,10 +187,11 @@ class ActiveContestsView(ListAPIView):
 
     def get_queryset(self):
         now = timezone.now()
-        # Annotate contests with their ending time (duration is in minutes)
+        print(now)
+        # Use database functions to add duration directly to starting_time
         return Contest.objects.annotate(
             end_time=ExpressionWrapper(
-                F('starting_time') + timezone.timedelta(minutes=F('duration')), 
+                F('starting_time') + F('duration'),
                 output_field=DateTimeField()
             )
         ).filter(
@@ -197,10 +211,10 @@ class CompletedContestsView(ListAPIView):
 
     def get_queryset(self):
         now = timezone.now()
-        # Filter contests that have ended (end_time < now)
+        # Use the same approach for completed contests
         return Contest.objects.annotate(
             end_time=ExpressionWrapper(
-                F('starting_time') + timezone.timedelta(minutes=F('duration')), 
+                F('starting_time') + F('duration'),
                 output_field=DateTimeField()
             )
         ).filter(
@@ -610,7 +624,8 @@ class ContestProblemSubmitView(APIView):
                 status=status.HTTP_403_FORBIDDEN
             )
         
-        contest_end = contest.starting_time + timezone.timedelta(minutes=contest.duration)
+        # Use the duration field directly without converting to minutes
+        contest_end = contest.starting_time + contest.duration
         if now > contest_end:
             return Response(
                 {"detail": "Contest has ended."},
