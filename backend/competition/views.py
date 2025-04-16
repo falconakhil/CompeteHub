@@ -204,7 +204,6 @@ class CompletedContestsView(ListAPIView):
                 output_field=DateTimeField()
             )
         ).filter(
-            creator=self.request.user,
             end_time__lt=now  # Contest has ended
         ).order_by('-end_time')  # Sort by end time, most recent first
 
