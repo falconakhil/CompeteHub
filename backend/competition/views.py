@@ -15,6 +15,7 @@ from .models import Contest, ContestGenre, Participation, ContestProblem
 
 from django.utils import timezone
 from django.db.models import F, ExpressionWrapper, DateTimeField
+from datetime import timedelta
 
 import logging
 logger = logging.getLogger(__name__)
@@ -30,7 +31,7 @@ class ContestCreateView(APIView):
         "name": "Spring Coding Challenge 2025",
         "description": "A competitive programming contest...",
         "starting_time": "2025-04-15T09:00:00Z",
-        "duration": 60,  # Duration in minutes
+        "duration": "01:00:00",  # Duration in HH:MM:SS format
         "genre_names": ["Algorithms", "Data Structures"]
     }
     
@@ -78,18 +79,31 @@ class ContestCreateView(APIView):
                 
                 data['genre_ids'] = genres
             
-            # Validate duration is a positive integer
+            # Validate duration is a positive value
             if 'duration' in data:
                 try:
-                    duration_minutes = int(data['duration'])
-                    if duration_minutes <= 0:
+                    # Parse the duration string (expected format: "HH:MM:SS")
+                    duration_str = data['duration']
+                    if not isinstance(duration_str, str) or not duration_str:
                         return Response(
-                            {"detail": "Duration must be positive"},
+                            {"detail": "Duration must be a string in the format 'HH:MM:SS'"},
                             status=status.HTTP_400_BAD_REQUEST
                         )
+                    
+                    # Try to parse the duration to validate it
+                    from datetime import datetime
+                    try:
+                        # Parse as time to validate format
+                        datetime.strptime(duration_str, "%H:%M:%S")
+                    except ValueError:
+                        return Response(
+                            {"detail": "Duration must be in the format 'HH:MM:SS'"},
+                            status=status.HTTP_400_BAD_REQUEST
+                        )
+                    
                 except (ValueError, TypeError):
                     return Response(
-                        {"detail": "Duration must be a valid number of minutes"},
+                        {"detail": "Duration must be a valid time string in the format 'HH:MM:SS'"},
                         status=status.HTTP_400_BAD_REQUEST
                     )
             
@@ -164,7 +178,6 @@ class FutureContestsView(ListAPIView):
             starting_time__gt=now  # Contest has not started yet
         ).order_by('-starting_time')  # Sort by starting time in decreasing order
 
-
 class ActiveContestsView(ListAPIView):
     """
     API endpoint for retrieving active contests
@@ -177,10 +190,11 @@ class ActiveContestsView(ListAPIView):
 
     def get_queryset(self):
         now = timezone.now()
-        # Annotate contests with their ending time (duration is in minutes)
+        print(now)
+        # Use database functions to add duration directly to starting_time
         return Contest.objects.annotate(
             end_time=ExpressionWrapper(
-                F('starting_time') + timezone.timedelta(minutes=F('duration')), 
+                F('starting_time') + F('duration'),
                 output_field=DateTimeField()
             )
         ).filter(
@@ -200,12 +214,10 @@ class CompletedContestsView(ListAPIView):
 
     def get_queryset(self):
         now = timezone.now()
-        logger.info(f'Current time: {now}')
-        
-        # Filter contests that have ended (end_time < now)
-        queryset = Contest.objects.annotate(
+        # Use the same approach for completed contests
+        return Contest.objects.annotate(
             end_time=ExpressionWrapper(
-                F('starting_time') + timezone.timedelta(minutes=F('duration')), 
+                F('starting_time') + F('duration'),
                 output_field=DateTimeField()
             )
         ).filter(
@@ -599,167 +611,74 @@ class ContestProblemSubmitView(APIView):
     permission_classes = [IsAuthenticated]
     
     def post(self, request, contest_id, order):
-        try:
-            logger.info(f"Attempting submission for contest {contest_id}, problem {order}")
-            logger.info(f"Request data: {request.data}")
-            
-            # Get the contest or return 404 if not found
-            contest = get_object_or_404(Contest, pk=contest_id)
-            logger.info(f"Found contest: {contest.name}")
-            
-            # Check if user is registered
-            participation = Participation.objects.filter(user=request.user, contest=contest).first()
-            if not participation:
-                logger.warning(f"User {request.user.id} not registered for contest {contest_id}")
-                return Response(
-                    {"detail": "You must be registered for this contest to submit answers."},
-                    status=status.HTTP_403_FORBIDDEN
-                )
-            
-            # Check if the contest is active
-            now = timezone.now()
-            if contest.starting_time > now:
-                logger.warning(f"Contest {contest_id} has not started yet")
-                return Response(
-                    {"detail": "Contest has not started yet."},
-                    status=status.HTTP_403_FORBIDDEN
-                )
-            
-            contest_end = contest.starting_time + timezone.timedelta(minutes=contest.duration)
-            if now > contest_end:
-                logger.warning(f"Contest {contest_id} has ended")
-                return Response(
-                    {"detail": "Contest has ended."},
-                    status=status.HTTP_403_FORBIDDEN
-                )
-            
-            # Get the contest problem
-            try:
-                contest_problem = ContestProblem.objects.get(
-                    contest=contest,
-                    order=order
-                )
-                logger.info(f"Found contest problem: {contest_problem.problem.title}")
-            except ContestProblem.DoesNotExist:
-                logger.error(f"Contest problem not found for contest {contest_id}, order {order}")
-                return Response(
-                    {"detail": "Problem not found."},
-                    status=status.HTTP_404_NOT_FOUND
-                )
-            
-            # Check if user has already submitted a correct answer
-            previous_correct_submission = Submission.objects.filter(
-                user=request.user,
-                problem=contest_problem.problem,
-                evaluation_status='Correct'
-            ).exists()
-            
-            if previous_correct_submission:
-                return Response(
-                    {"detail": "You have already submitted a correct answer for this problem."},
-                    status=status.HTTP_400_BAD_REQUEST
-                )
-            
-            # Compare the submitted answer with the problem's answer (case-insensitive)
-            submitted_answer = request.data.get('answer', '').strip().lower()
-            correct_answer = contest_problem.problem.answer.strip().lower()
-            is_correct = submitted_answer == correct_answer
-            logger.info(f"Answer comparison - Submitted: {submitted_answer}, Correct: {correct_answer}, Result: {is_correct}")
-            
-            # Update participation stats
-            participation.last_submission_time = now
-            participation.submissions_count += 1
-            if is_correct:
-                participation.score += contest_problem.points
-            participation.save()
-            logger.info(f"Updated participation stats - Score: {participation.score}, Submissions: {participation.submissions_count}")
-            
-            # Create a submission record
-            submission_data = {
-                'content': request.data.get('answer', ''),
-                'problem': contest_problem.problem.id,
-                'evaluation_status': 'Correct' if is_correct else 'Wrong'
-            }
-            logger.info(f"Creating submission with data: {submission_data}")
-            
-            submission_serializer = SubmissionSerializer(data=submission_data)
-            if submission_serializer.is_valid():
-                submission_serializer.save(user=request.user)
-                logger.info("Submission created successfully")
-            else:
-                logger.error(f"Invalid submission data: {submission_serializer.errors}")
-                return Response(
-                    {"detail": "Invalid submission data", "errors": submission_serializer.errors},
-                    status=status.HTTP_400_BAD_REQUEST
-                )
-            
-            return Response({
-                "detail": "Answer submitted successfully",
-                "correct": is_correct,
-                "points_awarded": contest_problem.points if is_correct else 0,
-                "already_correct": previous_correct_submission
-            })
-            
-        except Exception as e:
-            logger.error(f"Error in contest problem submission: {str(e)}", exc_info=True)
+        # Get the contest or return 404 if not found
+        contest = get_object_or_404(Contest, pk=contest_id)
+        
+        # Check if user is registered
+        participation = Participation.objects.filter(user=request.user, contest=contest).first()
+        if not participation:
             return Response(
-                {"detail": f"An error occurred while processing your submission: {str(e)}"},
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+                {"detail": "You must be registered for this contest to submit answers."},
+                status=status.HTTP_403_FORBIDDEN
             )
-
-class ContestProblemSubmissionsView(APIView):
-    """
-    API endpoint for retrieving submissions for a contest problem
-    
-    Method: GET
-    
-    URL Parameters:
-    - problem_id: Problem ID
-    
-    Returns:
-    - 200 OK: List of submissions
-    - 403 Forbidden: User not registered or contest not active
-    - 404 Not Found: Problem not found
-    """
-    permission_classes = [IsAuthenticated]
-    
-    def get(self, request, problem_id):
-        try:
-            # Get the problem
-            problem = get_object_or_404(Problem, pk=problem_id)
-            
-            # Get the contest problem
-            contest_problem = ContestProblem.objects.filter(problem=problem).first()
-            if not contest_problem:
-                return Response(
-                    {"detail": "Problem not found in any contest."},
-                    status=status.HTTP_404_NOT_FOUND
-                )
-            
-            # Check if user is registered for the contest
-            participation = Participation.objects.filter(
-                user=request.user,
-                contest=contest_problem.contest
-            ).first()
-            
-            if not participation:
-                return Response(
-                    {"detail": "You must be registered for this contest to view submissions."},
-                    status=status.HTTP_403_FORBIDDEN
-                )
-            
-            # Get all submissions for this problem by the current user
-            submissions = Submission.objects.filter(
-                user=request.user,
-                problem=problem
-            ).order_by('-created_at')
-            
-            serializer = SubmissionSerializer(submissions, many=True)
-            return Response(serializer.data)
-            
-        except Exception as e:
-            logger.error(f"Error fetching contest problem submissions: {str(e)}", exc_info=True)
+        
+        # Check if the contest is active
+        now = timezone.now()
+        if contest.starting_time > now:
             return Response(
-                {"detail": f"An error occurred while fetching submissions: {str(e)}"},
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+                {"detail": "Contest has not started yet."},
+                status=status.HTTP_403_FORBIDDEN
             )
+        
+        # Use the duration field directly without converting to minutes
+        contest_end = contest.starting_time + contest.duration
+        if now > contest_end:
+            return Response(
+                {"detail": "Contest has ended."},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        
+        # Get all problems to determine the current problem's order
+        contest_problems = ContestProblem.objects.filter(contest=contest).order_by('order')
+        problem_list = list(contest_problems)
+        current_problem = None
+        
+        # Find the problem with the specified order
+        for i, cp in enumerate(problem_list, 1):
+            if i == order:
+                current_problem = cp
+                break
+        
+        if not current_problem:
+            return Response(
+                {"detail": "Problem not found."},
+                status=status.HTTP_404_NOT_FOUND
+            )
+        
+        # Compare the submitted answer with the problem's answer (case-insensitive)
+        submitted_answer = request.data.get('answer', '').strip().lower()
+        correct_answer = current_problem.problem.answer.strip().lower()
+        is_correct = submitted_answer == correct_answer
+        
+        # Update participation stats
+        participation.last_submission_time = now
+        participation.submissions_count += 1
+        if is_correct:
+            participation.score += current_problem.points
+        participation.save()
+        
+        # Create a submission record
+        submission_data = {
+            'content': request.data.get('answer', ''),
+            'problem': current_problem.problem.id,
+            'evaluation_status': 'Correct' if is_correct else 'Wrong'
+        }
+        submission_serializer = SubmissionSerializer(data=submission_data)
+        if submission_serializer.is_valid():
+            submission_serializer.save(user=request.user)
+        
+        return Response({
+            "detail": "Answer submitted successfully",
+            "correct": is_correct,
+            "points_awarded": current_problem.points if is_correct else 0
+        })
